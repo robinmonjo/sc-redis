@@ -14,6 +14,7 @@ import (
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/libcontainer"
 	"github.com/docker/libcontainer/namespaces"
+	"github.com/fatih/color"
 )
 
 const (
@@ -21,15 +22,31 @@ const (
 	redisRootfsAsset        = "redis_rootfs.tar"
 )
 
+func init() {
+	log.SetFlags(0) //no date time
+}
+
 func main() {
 
 	if len(os.Args) >= 2 && os.Args[1] == "init" {
+		//stage 2 execute inside container
+		color.Set(color.FgGreen, color.Bold)
+		log.SetPrefix("[Stage 2] ")
 		_init()
 		return
 	}
 
+	//stage 0 extracting rootfs
+	color.Set(color.FgYellow, color.Bold)
+	log.SetPrefix("[Stage 0] ")
+	log.Println("exporting redis container rootfs")
 	exportRootfs()
+	color.Unset()
 
+	//stage 1 starting container
+	color.Set(color.FgBlue, color.Bold)
+	log.SetPrefix("[Stage 1] ")
+	log.Println("starting container")
 	container, err := loadConfig(rootfsPath)
 	if err != nil {
 		log.Fatal(err)
@@ -40,6 +57,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to exec: %s", err)
 	}
+	color.Unset()
 
 	os.Exit(exitCode)
 }
@@ -94,7 +112,7 @@ func startContainer(container *libcontainer.Config, dataPath string, args []stri
 	return namespaces.Exec(container, os.Stdin, os.Stdout, os.Stderr, console, dataPath, args, createCommand, startCallback)
 }
 
-//called by the contained process.
+//container pid 1 code
 func _init() {
 	err := os.Chdir(rootfsPath)
 	if err != nil {
@@ -124,8 +142,10 @@ func _init() {
 	}
 
 	pipe := os.NewFile(uintptr(pipeFd), "pipe")
-
-	if err := namespaces.Init(container, rootfs, console, pipe, findUserArgs(os.Args)); err != nil {
+	args := findUserArgs(os.Args)
+	log.Println("executing", args)
+	color.Unset()
+	if err := namespaces.Init(container, rootfs, console, pipe, args); err != nil {
 		log.Fatalf("unable to initialize for container: %s", err)
 	}
 }
