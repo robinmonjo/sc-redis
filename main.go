@@ -1,18 +1,25 @@
 package main
 
 import (
+	"bytes"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
 	"runtime"
 	"strconv"
 
+	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/libcontainer"
 	"github.com/docker/libcontainer/namespaces"
 )
 
-const rootfs string = "."
+const (
+	rootfsPath       string = "./rootfs"
+	redisRootfsAsset        = "redis_rootfs.tar"
+)
 
 func main() {
 
@@ -21,18 +28,41 @@ func main() {
 		return
 	}
 
-	container, err := loadConfig(rootfs)
+	exportRootfs()
+
+	container, err := loadConfig(rootfsPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	exitCode, err := startContainer(container, rootfs, []string{"/usr/local/bin/redis-server"})
+	exitCode, err := startContainer(container, rootfsPath, []string{"redis-server"})
 
 	if err != nil {
 		log.Fatalf("failed to exec: %s", err)
 	}
 
 	os.Exit(exitCode)
+}
+
+func exportRootfs() {
+	//export the tar
+	tar, err := Asset(redisRootfsAsset)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	buf := bytes.NewBuffer(tar)
+
+	err = archive.Untar(buf, rootfsPath, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	//write the container.json
+	err = ioutil.WriteFile(path.Join(rootfsPath, "container.json"), []byte(containerJson), 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 // startContainer starts the container. Returns the exit status or -1 and an
@@ -66,6 +96,11 @@ func startContainer(container *libcontainer.Config, dataPath string, args []stri
 
 //called by the contained process.
 func _init() {
+	err := os.Chdir(rootfsPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	var (
 		console   = os.Getenv("console")
 		rawPipeFd = os.Getenv("pipe")
@@ -73,11 +108,12 @@ func _init() {
 	runtime.LockOSThread()
 
 	rootfs, err := os.Getwd()
+	log.Println("container is in ", rootfs)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	container, err := loadConfig(rootfs)
+	container, err := loadConfig(".")
 	if err != nil {
 		log.Fatal(err)
 	}
