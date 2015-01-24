@@ -1,6 +1,6 @@
 package main
 
-const containerJson string = `
+const containerJson = `
 {
     "capabilities": [
         "CHOWN",
@@ -116,8 +116,8 @@ const containerJson string = `
                 "type": 99
             }
         ],
-        "name": "docker-koye",
-        "parent": "docker"
+        "name": "redis",
+        "parent": "sc-redis"
     },
     "restrict_sys": true,
     "mount_config": {
@@ -186,11 +186,27 @@ const containerJson string = `
     "hostname": "redis",
     "namespaces": {
         "NEWIPC": true,
-        "NEWNET": false,
+        "NEWNET": true,
         "NEWNS": true,
         "NEWPID": true,
         "NEWUTS": true
     },
+    "networks": [
+        {
+            "address": "127.0.0.1/0",
+            "gateway": "localhost",
+            "mtu": 1500,
+            "type": "loopback"
+        },
+        {
+            "address": "{{.IpAddr}}",
+            "bridge": "scredis0",
+            "veth_prefix": "veth",
+            "gateway": "10.0.5.1",
+            "mtu": 1500,
+            "type": "veth"
+        }
+    ],
     "tty": false,
     "user": "root"
 }

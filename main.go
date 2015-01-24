@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -10,6 +9,7 @@ import (
 	"path"
 	"runtime"
 	"strconv"
+	"text/template"
 
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/libcontainer"
@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	rootfsPath       string = "./rootfs"
-	redisRootfsAsset        = "redis_rootfs.tar"
+	rootfsPath       = "./rootfs"
+	redisRootfsAsset = "redis_rootfs.tar"
 )
 
 func init() {
@@ -32,6 +32,8 @@ func main() {
 		//stage 2 execute inside container
 		color.Set(color.FgGreen, color.Bold)
 		log.SetPrefix("[Stage 2] ")
+		log.Println("pid", os.Getpid(), "(inside container)") //will be pid one inside container
+
 		_init()
 		return
 	}
@@ -39,13 +41,41 @@ func main() {
 	//stage 0 extracting rootfs
 	color.Set(color.FgYellow, color.Bold)
 	log.SetPrefix("[Stage 0] ")
+	log.Println("pid", os.Getpid())
 	log.Println("exporting redis container rootfs")
-	exportRootfs()
+	if err := exportRootfs(); err != nil {
+		log.Fatal(err)
+	}
+
+	ipLastInt, err := freeIpAddrLastInt()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		log.Println("REALEASING THE IP")
+		if err := releaseIpAddr(ipLastInt); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	ipAddr := "10.0.5." + strconv.Itoa(ipLastInt) + "/8"
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := writeContainerJSON(ipAddr); err != nil {
+		log.Fatal(err)
+	}
 	color.Unset()
 
 	//stage 1 starting container
 	color.Set(color.FgBlue, color.Bold)
 	log.SetPrefix("[Stage 1] ")
+	if err := setupNetBridge(); err != nil {
+		log.Fatal(err)
+	}
+	log.Println(bridgeInfo())
+	log.Println("container IP address:", ipAddr)
 	log.Println("starting container")
 	container, err := loadConfig(rootfsPath)
 	if err != nil {
@@ -59,28 +89,44 @@ func main() {
 	}
 	color.Unset()
 
+	if err := releaseIpAddr(ipLastInt); err != nil {
+		log.Fatal(err)
+	}
+
 	os.Exit(exitCode)
 }
 
-func exportRootfs() {
+func exportRootfs() error {
 	//export the tar
 	tar, err := Asset(redisRootfsAsset)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	buf := bytes.NewBuffer(tar)
 
-	err = archive.Untar(buf, rootfsPath, nil)
+	return archive.Untar(buf, rootfsPath, nil)
+}
+
+func writeContainerJSON(ipAddr string) error {
+	//write the container.json
+	f, err := os.Create(path.Join(rootfsPath, "container.json"))
 	if err != nil {
-		log.Fatal(err)
+		return err
+	}
+	defer f.Close()
+
+	type Config struct {
+		IpAddr string
 	}
 
-	//write the container.json
-	err = ioutil.WriteFile(path.Join(rootfsPath, "container.json"), []byte(containerJson), 0644)
+	t := template.New("container.json")
+	t, err = t.Parse(containerJson)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+	t.Execute(f, Config{IpAddr: ipAddr})
+	return nil
 }
 
 // startContainer starts the container. Returns the exit status or -1 and an
@@ -146,6 +192,6 @@ func _init() {
 	log.Println("executing", args)
 	color.Unset()
 	if err := namespaces.Init(container, rootfs, console, pipe, args); err != nil {
-		log.Fatalf("unable to initialize for container: %s", err)
+		log.Fatalf("unable to initialize container: %s", err)
 	}
 }

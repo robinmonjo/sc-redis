@@ -2,7 +2,6 @@
 
 set -e
 
-sudo add-apt-repository ppa:duh/golang
 sudo apt-get update -qq
 
 echo "Installing base stack"
@@ -20,5 +19,9 @@ curl -sL https://github.com/robinmonjo/cargo/releases/download/v1.4.1/cargo-v1.4
 #install latest go version
 curl -sL https://storage.googleapis.com/golang/go1.4.1.linux-amd64.tar.gz | tar -C /usr/local -zxf -
 echo "export PATH=$PATH:/usr/local/go/bin" >> /etc/profile
+source /etc/profile
 
-echo "GOPATH=~/code/go" >> ~/.bashrc
+#install go-bindata
+mkdir -p /home/vagrant/go
+GOPATH=/home/vagrant/go go get -u github.com/jteeuwen/go-bindata/...
+echo "export PATH=$PATH:/home/vagrant/go/bin" >> /etc/profile
