@@ -51,19 +51,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer func() {
-		log.Println("REALEASING THE IP")
-		if err := releaseIpAddr(ipLastInt); err != nil {
-			log.Fatal(err)
-		}
-	}()
-
 	ipAddr := "10.0.5." + strconv.Itoa(ipLastInt) + "/8"
-
-	if err != nil {
-		log.Fatal(err)
-	}
 	if err := writeContainerJSON(ipAddr); err != nil {
+		releaseIpAddr(ipLastInt)
 		log.Fatal(err)
 	}
 	color.Unset()
@@ -72,6 +62,7 @@ func main() {
 	color.Set(color.FgBlue, color.Bold)
 	log.SetPrefix("[Stage 1] ")
 	if err := setupNetBridge(); err != nil {
+		releaseIpAddr(ipLastInt)
 		log.Fatal(err)
 	}
 	log.Println(bridgeInfo())
@@ -79,20 +70,19 @@ func main() {
 	log.Println("starting container")
 	container, err := loadConfig(rootfsPath)
 	if err != nil {
+		releaseIpAddr(ipLastInt)
 		log.Fatal(err)
 	}
 
 	exitCode, err := startContainer(container, rootfsPath, []string{"redis-server"})
 
 	if err != nil {
+		releaseIpAddr(ipLastInt)
 		log.Fatalf("failed to exec: %s", err)
 	}
 	color.Unset()
 
-	if err := releaseIpAddr(ipLastInt); err != nil {
-		log.Fatal(err)
-	}
-
+	releaseIpAddr(ipLastInt)
 	os.Exit(exitCode)
 }
 
