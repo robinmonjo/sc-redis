@@ -4,6 +4,9 @@ Super fast and easy way to deploy (containerized) redis-server:
 
 ![Alt text](https://dl.dropboxusercontent.com/u/6543817/sc-redis-readme/sc-redis.png)
 
+`sc-redis` is **dependency free**, with just the binary you will be able to spawn containerized redis-server instances.
+See the **how it works** section for more info.
+
 ##Installation
 
 ````bash
