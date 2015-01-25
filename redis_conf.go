@@ -838,16 +838,16 @@ hz 10
 # big latency spikes.
 aof-rewrite-incremental-fsync yes
 
-{{ range $key, $value := . }}
-   {{ $key }} {{ $value }}
+{{ range $i, $value := . }}
+  {{ $value }}
 {{ end }}
 `
 
 func writeRawRedisConf(basePath string, rawConf string) error {
-	return writeRedisConf(basePath, parseRedisConfig(rawConf))
+	return writeRedisConf(basePath, strings.Split(rawConf, ","))
 }
 
-func writeRedisConf(basePath string, conf map[string]string) error {
+func writeRedisConf(basePath string, conf []string) error {
 	//write the container.json
 	f, err := os.Create(path.Join(basePath, "redis.conf"))
 	if err != nil {
@@ -862,20 +862,4 @@ func writeRedisConf(basePath string, conf map[string]string) error {
 	}
 	t.Execute(f, conf)
 	return nil
-}
-
-//format: "key:args1 args2 args3,key:args1 args2 args3"
-func parseRedisConfig(strConf string) map[string]string {
-	result := make(map[string]string)
-	configs := strings.Split(strConf, ",")
-	for _, conf := range configs {
-		if conf == "" {
-			break
-		}
-		comps := strings.SplitN(conf, ":", 2)
-		key := comps[0]
-		args := comps[1]
-		result[key] = args
-	}
-	return result
 }
