@@ -39,7 +39,7 @@ Display `sc-redis` version. Sample output: `sc-redis v0.1 (redis v2.8.19, libcon
 ##How it works
 
 `sc-redis` uses [libcontainer](https://github.com/docker/libcontainer), a go library used as container backend in docker.
-A minimal redis-server image is build ([see build image instruction](https://github.com/robinmonjo/sc-redis/blob/master/BUILD_IMAGE.md))
+A minimal redis-server image is build ([see build image instructions](https://github.com/robinmonjo/sc-redis/blob/master/BUILD_IMAGE.md))
 and packaged directly inside `sc-redis` binary using [go-bindata](https://github.com/jteeuwen/go-bindata).
 On start, `sc-redis` extract the image (rootfs), create a container with libcontainer and run
 redis-server in it.
@@ -53,6 +53,16 @@ system or from other running `sc-redis` process.
 - [ ] allow user to choose container ip address
 - [ ] allow to directly use the host net interface (and not `scredis0` bridge)
 - [ ] start using an existing rootfs (data persistence)
+
+##Hacking on sc-redis
+
+The Makefile contains lot's of info but basically, to get started:
+1. fork this repository and clone it
+2. `make vendor`
+3. `make redis-rootfs` (as it's not versionned)
+4. `make build` done !
+
+Note, if you are working on Vagrant, running `sc-redis` on a shared folder won't work.
 
 ##Credits
 
