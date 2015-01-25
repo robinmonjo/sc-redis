@@ -23,15 +23,15 @@ PONG
 
 `sc-redis` is **dependency free**, with just the binary you will be able to spawn self contained redis-server instances.
 
-`sc-redis` uses [libcontainer](https://github.com/docker/libcontainer), a go library used as container backend in docker.
-A minimal redis-server image is built and packaged directly inside `sc-redis` binary using [go-bindata](https://github.com/jteeuwen/go-bindata).
+`sc-redis` uses [libcontainer](https://github.com/docker/libcontainer), the go library used as container backend in docker.
+A minimal redis-server image is built and packaged directly inside `sc-redis` binary with [go-bindata](https://github.com/jteeuwen/go-bindata).
 On start, `sc-redis` extract the image (rootfs), create a container with libcontainer and run
 redis-server in it.
 
-You can read more about [**how the image is build**](https://github.com/robinmonjo/sc-redis/blob/master/BUILD_IMAGE.md)
+You can read more about [**how the image is built**](https://github.com/robinmonjo/sc-redis/blob/master/BUILD_IMAGE.md)
 
 Every `sc-redis` containers will be hooked on the network bridge `scredis0` created on
-the host. Each `sc-redis` process is containerized, meaning it's totally isolated from the host
+the host. Each `sc-redis` process is containerized, totally isolated from the host
 system or from other running `sc-redis` process.
 
 For now, redis-server container are ephemeral and will be destroyed when the process exits.
@@ -48,7 +48,6 @@ To uninstall:
 * remove the ip tracker file `/etc/scredis_ips.json`
 * delete the bridge iface: `ip link delete scredis0 type bridge`
 
-
 ##Usage
 
 `sudo sc-redis` launch the server and output its ip address. You can then connect to it directly:
@@ -56,7 +55,7 @@ To uninstall:
 
 If you want the server to be accessible outside of the host, you will need some iptables magic.
 
-###flags
+####flags
 
 - `-c "config line, config line"`
 
@@ -86,7 +85,7 @@ The Makefile contains a lot of info but basically, to get started:
 3. `make redis-rootfs` (as it's not versionned)
 4. `make build` done !
 
-Note, if you are working on Vagrant, running `sc-redis` on a shared folder won't work.
+Note, if you are working on Vagrant, running `sc-redis` on a shared folder won't work (rootfs extraction will fail).
 
 ##Credits
 
