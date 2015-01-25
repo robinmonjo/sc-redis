@@ -37,7 +37,9 @@ Example: `sc-redis -c "requirepass foobar, port 9999"`
 
 - `-v`
 
-Display `sc-redis` version. Sample output: `sc-redis v0.1 (redis v2.8.19, libcontainer v1.4.0)`
+Display `sc-redis` version. Sample output:
+
+`sc-redis v0.1 (redis v2.8.19, libcontainer v1.4.0)`
 
 ##How it works
 
@@ -59,7 +61,8 @@ system or from other running `sc-redis` process.
 
 ##Hacking on sc-redis
 
-The Makefile contains lot's of info but basically, to get started:
+The Makefile contains a lot of info but basically, to get started:
+
 1. fork this repository and clone it
 2. `make vendor`
 3. `make redis-rootfs` (as it's not versionned)
