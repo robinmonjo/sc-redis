@@ -48,5 +48,5 @@ func setupNetBridge() error {
 }
 
 func bridgeInfo() string {
-	return "bridge " + bridgeName + " up " + bridgeNetwork + ", (delete: `ip link delete " + bridgeName + " type bridge`)"
+	return "bridge " + bridgeName + " up " + bridgeNetwork
 }

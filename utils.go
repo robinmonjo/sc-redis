@@ -12,8 +12,6 @@ import (
 	"github.com/docker/libcontainer"
 )
 
-const ipPoolFile = "/etc/scredis_ips.json"
-
 func loadConfig(rootfs string) (*libcontainer.Config, error) {
 	f, err := os.Open(filepath.Join(rootfs, "container.json"))
 	if err != nil {

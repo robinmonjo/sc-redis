@@ -9,6 +9,7 @@ import (
 	"path"
 	"runtime"
 	"strconv"
+	"time"
 
 	"github.com/docker/libcontainer"
 	"github.com/docker/libcontainer/namespaces"
@@ -16,9 +17,11 @@ import (
 )
 
 const (
-	redisRootfsAsset = "redis_rootfs.tar"
-	version          = "0.1"
-	dockerVersion    = "1.4.1"
+	redisRootfsAsset    = "redis_rootfs.tar"
+	version             = "0.1"
+	libcontainerVersion = "1.4.0"
+	redisVersion        = "2.8.19"
+	ipPoolFile          = "/etc/scredis_ips.json"
 )
 
 var (
@@ -45,19 +48,21 @@ func main() {
 	flag.Parse()
 
 	if *showVersion {
-		log.Printf("sc-redis v%s (docker v%s)", version, dockerVersion)
+		log.Printf("sc-redis v%s (redis v%s, libcontainer v%s)", version, redisVersion, libcontainerVersion)
 		os.Exit(0)
 	}
 
-	rootfs := "./sc-redis_rootfs"
+	rootfs := "scredis_" + time.Now().Format("20060102150405")
 	startContFn, ipID, err := prepareContainer(rootfs)
+	if err != nil {
+		log.Fatal(err)
+	}
 	exitCode, err := startContFn()
 	if err != nil {
-		color.Unset()
 		log.Fatal(err)
 	}
 	releaseIpAddr(ipID)
-	os.RemoveAll("./sc-redis_rootfs")
+	os.RemoveAll(rootfs)
 	os.Exit(exitCode)
 }
 
@@ -70,12 +75,12 @@ func prepareContainer(rootfs string) (func() (int, error), int, error) {
 	)
 
 	defer func() {
-		//if something went wrong during preparation, cleanup
+		//if something goes wrong during preparation, cleanup
 		if err != nil {
 			os.RemoveAll(rootfs)
 			releaseIpAddr(ipID)
-			color.Unset()
 		}
+		color.Unset()
 	}()
 
 	//stage 0 extracting rootfs
@@ -87,6 +92,15 @@ func prepareContainer(rootfs string) (func() (int, error), int, error) {
 		return nil, ipID, err
 	}
 
+	//stage 1 configuring container
+	color.Set(color.FgBlue, color.Bold)
+	log.SetPrefix("[Stage 1] ")
+
+	if err = setupNetBridge(); err != nil {
+		return nil, ipID, err
+	}
+	log.Println(bridgeInfo())
+
 	ipID, err = availableIPAddrID()
 	if err != nil {
 		return nil, ipID, err
@@ -95,26 +109,15 @@ func prepareContainer(rootfs string) (func() (int, error), int, error) {
 	if err = writeContainerJSON(rootfs, ipAddr); err != nil {
 		return nil, ipID, err
 	}
+	log.Println("container IP address:", ipAddr)
 	if err = writeRawRedisConf(path.Join(rootfs, "etc"), *redisConfig); err != nil {
 		return nil, ipID, err
 	}
 
-	color.Unset()
-
-	//stage 1 starting container
-	color.Set(color.FgBlue, color.Bold)
-	log.SetPrefix("[Stage 1] ")
-	if err = setupNetBridge(); err != nil {
-		return nil, ipID, err
-	}
-	log.Println(bridgeInfo())
-	log.Println("container IP address:", ipAddr)
-	log.Println("starting container")
 	containerConf, err = loadConfig(rootfs)
 	if err != nil {
 		return nil, ipID, err
 	}
-
 	fn := func() (int, error) {
 		return startContainer(containerConf, rootfs, []string{"redis-server", "/etc/redis.conf"})
 	}
