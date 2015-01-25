@@ -21,13 +21,14 @@ PONG
 
 ##Description
 
-`sc-redis` is **dependency free**, with just the binary you will be able to spawn containerized redis-server instances.
+`sc-redis` is **dependency free**, with just the binary you will be able to spawn self contained redis-server instances.
 
 `sc-redis` uses [libcontainer](https://github.com/docker/libcontainer), a go library used as container backend in docker.
-A minimal redis-server image is built ([see build image instructions](https://github.com/robinmonjo/sc-redis/blob/master/BUILD_IMAGE.md))
-and packaged directly inside `sc-redis` binary using [go-bindata](https://github.com/jteeuwen/go-bindata).
+A minimal redis-server image is built and packaged directly inside `sc-redis` binary using [go-bindata](https://github.com/jteeuwen/go-bindata).
 On start, `sc-redis` extract the image (rootfs), create a container with libcontainer and run
 redis-server in it.
+
+You can read more about [**how the image is build**](https://github.com/robinmonjo/sc-redis/blob/master/BUILD_IMAGE.md)
 
 Every `sc-redis` containers will be hooked on the network bridge `scredis0` created on
 the host. Each `sc-redis` process is containerized, meaning it's totally isolated from the host
