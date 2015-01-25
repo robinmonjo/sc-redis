@@ -22,6 +22,9 @@ test: vendor
 
 release:
 	mkdir -p release
+	GOPATH=$(GOPATH) GOOS=linux go build -o release/sc-redis
+	cd release && tar -zcf sc-redis-v$(VERSION)_$(HARDWARE).tgz sc-redis
+	rm release/sc-redis
 
 clean:
 	rm -rf ./sc-redis ./release

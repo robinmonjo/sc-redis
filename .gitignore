@@ -3,3 +3,4 @@ vendor
 sc-redis
 vagrant
 redis_rootfs.go
+release

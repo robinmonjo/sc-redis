@@ -18,8 +18,8 @@ $> sudo sc-redis
 
 - `-c "config line, config line"`
 
-Allows to pass [redis-server configuration](http://redis.io/topics/config). Each configuration, separated by a ","
-will be written at the end of the `redis.conf` file.
+Allows to pass custom [redis-server configuration](http://redis.io/topics/config). Each configuration, separated by a ","
+will be written at the end of the [default `redis.conf`](https://raw.githubusercontent.com/antirez/redis/2.8/redis.conf) file. 
 
 Example: `sc-redis -c "requirepass foobar, port 9999"`
 
@@ -39,7 +39,7 @@ Every `sc-redis` containers will be hooked on the network bridge `scredis0` crea
 the host. Each `sc-redis` process is containerized, meaning it's totally isolated from the host
 system or from other running `sc-redis` process.
 
-##Why ?
+##Installation
 
 
 ##Roadmap
