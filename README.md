@@ -76,7 +76,7 @@ Display `sc-redis` version. Sample output:
 - [ ] allow to directly use the host net interface (and not `scredis0` bridge)
 - [ ] start using an existing rootfs (data persistence)
 
-##Hacking on sc-redis
+##Contributing
 
 The Makefile contains a lot of info but basically, to get started:
 
@@ -86,6 +86,8 @@ The Makefile contains a lot of info but basically, to get started:
 4. `make build` done !
 
 Note, if you are working on Vagrant, running `sc-redis` on a shared folder won't work (rootfs extraction will fail).
+
+Feel free to report any issues or improvement ideas if you have some.
 
 ##Credits
 
