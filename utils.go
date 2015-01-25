@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
+	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/libcontainer"
 )
 
@@ -40,7 +42,7 @@ func findUserArgs(args []string) []string {
 	return args[i:]
 }
 
-func loadUsedIpAddrLastInts() ([]int, error) {
+func loadInUseIPAddrIDs() ([]int, error) {
 	if _, err := os.Stat(ipPoolFile); os.IsNotExist(err) {
 		if err := ioutil.WriteFile(ipPoolFile, []byte("[]\n"), 0666); err != nil {
 			return nil, err
@@ -53,52 +55,52 @@ func loadUsedIpAddrLastInts() ([]int, error) {
 	}
 	defer f.Close()
 
-	var ipLastInts []int
-	if err := json.NewDecoder(f).Decode(&ipLastInts); err != nil {
+	var ipAddrIDs []int
+	if err := json.NewDecoder(f).Decode(&ipAddrIDs); err != nil {
 		return nil, err
 	}
-	return ipLastInts, nil
+	return ipAddrIDs, nil
 }
 
-func freeIpAddrLastInt() (int, error) {
-	ipLastInts, err := loadUsedIpAddrLastInts()
+func availableIPAddrID() (int, error) {
+	ipAddrIDs, err := loadInUseIPAddrIDs()
 	if err != nil {
 		return -1, err
 	}
 
 	bitVector := make([]bool, 252) //range is 2 .. 254
-	for _, i := range ipLastInts {
+	for _, i := range ipAddrIDs {
 		bitVector[i-2] = true
 	}
 
-	freeIpLastInt := -1
-	for i, taken := range bitVector {
-		if !taken {
-			freeIpLastInt = i + 2
+	availableIPAddrID := -1
+	for i, inUse := range bitVector {
+		if !inUse {
+			availableIPAddrID = i + 2
 			break
 		}
 	}
-	if freeIpLastInt == -1 {
+	if availableIPAddrID == -1 {
 		return -1, fmt.Errorf("no more ip addr available")
 	}
 
-	ipLastInts = append(ipLastInts, freeIpLastInt)
-	b, _ := json.Marshal(ipLastInts)
+	ipAddrIDs = append(ipAddrIDs, availableIPAddrID)
+	b, _ := json.Marshal(ipAddrIDs)
 	if err := ioutil.WriteFile(ipPoolFile, b, 0666); err != nil {
 		return -1, err
 	}
 
-	return freeIpLastInt, nil
+	return availableIPAddrID, nil
 }
 
-func releaseIpAddr(ipLastInt int) error {
-	ipLastInts, err := loadUsedIpAddrLastInts()
+func releaseIpAddr(ipID int) error {
+	ipAddrIDs, err := loadInUseIPAddrIDs()
 	if err != nil {
 		return err
 	}
 	idx := -1
-	for i, v := range ipLastInts {
-		if v == ipLastInt {
+	for i, v := range ipAddrIDs {
+		if v == ipID {
 			idx = i
 			break
 		}
@@ -106,7 +108,19 @@ func releaseIpAddr(ipLastInt int) error {
 	if idx == -1 {
 		return nil
 	}
-	ipLastInts = append(ipLastInts[:idx], ipLastInts[idx+1:]...)
-	b, _ := json.Marshal(ipLastInts)
+	ipAddrIDs = append(ipAddrIDs[:idx], ipAddrIDs[idx+1:]...)
+	b, _ := json.Marshal(ipAddrIDs)
 	return ioutil.WriteFile(ipPoolFile, b, 0666)
+}
+
+func exportRootfs(basePath string) error {
+	//export the tar
+	tar, err := Asset(redisRootfsAsset)
+	if err != nil {
+		return err
+	}
+
+	buf := bytes.NewBuffer(tar)
+
+	return archive.Untar(buf, basePath, nil)
 }

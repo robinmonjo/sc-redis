@@ -1,5 +1,11 @@
 package main
 
+import (
+	"os"
+	"path"
+	"text/template"
+)
+
 const containerJson = `
 {
     "capabilities": [
@@ -211,3 +217,19 @@ const containerJson = `
     "user": "root"
 }
 `
+
+func writeContainerJSON(rootfs, ipAddr string) error {
+	f, err := os.Create(path.Join(rootfs, "container.json"))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	t := template.New("container.json")
+	t, err = t.Parse(containerJson)
+	if err != nil {
+		return err
+	}
+	t.Execute(f, map[string]string{"IpAddr": ipAddr})
+	return nil
+}
