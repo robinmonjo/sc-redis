@@ -33,4 +33,4 @@ Changes to be committed:
 ````
 
 Then this image is sent on the docker hub using `cargo` capabilities.
-The resulting image is weight around 9 MB and is available [here](https://registry.hub.docker.com/u/robinmonjo/scredis/)
+The resulting image weights around 9 MB and is available [here](https://registry.hub.docker.com/u/robinmonjo/scredis/)
