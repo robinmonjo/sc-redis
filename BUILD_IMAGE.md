@@ -1,6 +1,7 @@
-###How the redis image is build
+#How the redis-server image is build
 
-Prerequisite: `cargo` must be installed. All the operations are made on a ubuntu 14.04 box
+Prerequisite: [`cargo`](https://github.com/robinmonjo/cargo) must be installed. All the operations are made on an
+ubuntu 14.04 box
 
 * Build redis on a ubuntu 14.04 host
 
@@ -11,9 +12,10 @@ $ cd redis-2.8.19
 $ make
 ````
 
-* pull the busybox linux image `sudo cargo pull busybox:ubuntu-14.04 -r busybox -g` and move the redis-server binary into it:
+* pull the busybox linux image and move the redis-server binary into it:
 
 ````bash
+$ sudo cargo pull busybox:ubuntu-14.04 -r busybox -g
 $ cd busybox
 $ sudo mkdir -p usr/local/bin
 $ sudo cp /home/vagrant/redis-2.8.19/src/redis-server ./usr/local/bin/
@@ -30,4 +32,5 @@ Changes to be committed:
 	new file:   usr/local/bin/redis-server
 ````
 
-Then this image is sent on the docker hub using `cargo` capabilities and the resulting image is here
+Then this image is sent on the docker hub using `cargo` capabilities.
+The resulting image is weight around 9 MB and is available [here](https://registry.hub.docker.com/u/robinmonjo/scredis/)
