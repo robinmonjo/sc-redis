@@ -2,10 +2,39 @@
 
 Super fast and easy way to deploy (containerized) redis-server:
 
-![Alt text](https://dl.dropboxusercontent.com/u/6543817/sc-redis-readme/sc-redis.png)
+````bash
+$  sc-redis
+[Stage 0] pid 1007
+[Stage 0] exporting redis container rootfs
+[Stage 1] bridge scredis0 up 10.0.5.0/8
+[Stage 1] container IP address: 10.0.5.2/8
+[Stage 2] pid 1 (inside container)
+[Stage 2] container is in  /tmp/demo2/scredis_20150125200856
+[Stage 2] executing [redis-server /etc/redis.conf]
+
+[...] #redis-server output
+
+$ redis-cli -h 10.0.5.2 -p 6379
+10.0.5.2:6379> ping
+PONG
+````
+
+##Description
 
 `sc-redis` is **dependency free**, with just the binary you will be able to spawn containerized redis-server instances.
-See the **how it works** section for more info.
+
+`sc-redis` uses [libcontainer](https://github.com/docker/libcontainer), a go library used as container backend in docker.
+A minimal redis-server image is built ([see build image instructions](https://github.com/robinmonjo/sc-redis/blob/master/BUILD_IMAGE.md))
+and packaged directly inside `sc-redis` binary using [go-bindata](https://github.com/jteeuwen/go-bindata).
+On start, `sc-redis` extract the image (rootfs), create a container with libcontainer and run
+redis-server in it.
+
+Every `sc-redis` containers will be hooked on the network bridge `scredis0` created on
+the host. Each `sc-redis` process is containerized, meaning it's totally isolated from the host
+system or from other running `sc-redis` process.
+
+For now, redis-server container are ephemeral and will be destroyed when the process exits.
+Do not use it if you need storage persistence.
 
 ##Installation
 
@@ -40,18 +69,6 @@ Example: `sc-redis -c "requirepass foobar, port 9999"`
 Display `sc-redis` version. Sample output:
 
 `sc-redis v0.1 (redis v2.8.19, libcontainer v1.4.0)`
-
-##How it works
-
-`sc-redis` uses [libcontainer](https://github.com/docker/libcontainer), a go library used as container backend in docker.
-A minimal redis-server image is build ([see build image instructions](https://github.com/robinmonjo/sc-redis/blob/master/BUILD_IMAGE.md))
-and packaged directly inside `sc-redis` binary using [go-bindata](https://github.com/jteeuwen/go-bindata).
-On start, `sc-redis` extract the image (rootfs), create a container with libcontainer and run
-redis-server in it.
-
-Every `sc-redis` containers will be hooked on the network bridge `scredis0` created on
-the host. Each `sc-redis` process is containerized, meaning it's totally isolated from the host
-system or from other running `sc-redis` process.
 
 ##Roadmap
 
