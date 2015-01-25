@@ -21,7 +21,7 @@ PONG
 
 ##Description
 
-`sc-redis` is **dependency free**, with just the binary you will be able to spawn self contained redis-server instances.
+`sc-redis` (**s**elf **c**ontained or **s**tatic **c**ontainer) is **dependency free**, with just the binary you will be able to spawn self contained redis-server instances.
 
 `sc-redis` uses [libcontainer](https://github.com/docker/libcontainer), the go library used as container backend in docker.
 A minimal redis-server image is built and packaged directly inside `sc-redis` binary with [go-bindata](https://github.com/jteeuwen/go-bindata).
@@ -88,6 +88,9 @@ The Makefile contains a lot of info but basically, to get started:
 Note, if you are working on Vagrant, running `sc-redis` on a shared folder won't work (rootfs extraction will fail).
 
 Feel free to report any issues or improvement ideas if you have some.
+
+I hope this project may show the way for other self contained apps. `sc-mongodb` anyone ? `sc-postgresql`, `sc-*` ?
+One command deployment compensates for fat binaries ;)
 
 ##Credits
 
