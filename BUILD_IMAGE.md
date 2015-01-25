@@ -1,4 +1,4 @@
-#How the redis-server image is build
+#How the redis-server image is built
 
 Prerequisite: [`cargo`](https://github.com/robinmonjo/cargo) must be installed. All the operations are made on an
 ubuntu 14.04 box
