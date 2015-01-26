@@ -1,6 +1,6 @@
 GOPATH:=`pwd`/vendor:$(GOPATH)
 GOPATH:=`pwd`/vendor/src/github.com/docker/docker/vendor:$(GOPATH)
-VERSION:=0.1
+VERSION:=0.2
 HARDWARE=$(shell uname -m)
 DOCKER_IMAGE=robinmonjo/scredis
 

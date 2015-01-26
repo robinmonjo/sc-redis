@@ -4,18 +4,18 @@ Super fast and easy way to deploy (containerized) redis-server:
 
 ````bash
 $  sc-redis
-[Stage 0] pid 1007
+[Stage 0] pid 5768
 [Stage 0] exporting redis container rootfs
-[Stage 1] bridge scredis0 up 10.0.5.0/8
-[Stage 1] container IP address: 10.0.5.2/8
+[Stage 1] container config exported
+[Stage 1] redis config exported
 [Stage 2] pid 1 (inside container)
-[Stage 2] container is in  /tmp/demo2/scredis_20150125200856
+[Stage 2] container is in /tmp/scredis_20150126222801
 [Stage 2] executing [redis-server /etc/redis.conf]
 
 [...] #redis-server output
 
-$ redis-cli -h 10.0.5.2 -p 6379
-10.0.5.2:6379> ping
+$ redis-cli
+127.0.0.1:6379> ping
 PONG
 ````
 
@@ -30,9 +30,7 @@ redis-server in it.
 
 You can read more about [**how the image is built**](https://github.com/robinmonjo/sc-redis/blob/master/BUILD_IMAGE.md)
 
-Every `sc-redis` containers will be hooked on the network bridge `scredis0` created on
-the host. Each `sc-redis` process is containerized, totally isolated from the host
-system or from other running `sc-redis` process.
+Each `sc-redis` process is containerized, totally isolated from the host system or from other running `sc-redis` process.
 
 For now, redis-server container are ephemeral and will be destroyed when the process exits.
 Do not use it if you need storage persistence.
@@ -40,22 +38,29 @@ Do not use it if you need storage persistence.
 ##Installation
 
 ````bash
-curl -sL https://github.com/robinmonjo/sc-redis/releases/download/v0.1/sc-redis-v0.1_x86_64.tgz | tar -C /usr/local/bin -zxf -
+curl -sL https://github.com/robinmonjo/sc-redis/releases/download/v0.2/sc-redis-v0.2_x86_64.tgz | tar -C /usr/local/bin -zxf -
 ````
 
 To uninstall:
 * remove the binary `/usr/local/bin/sc-redis`
-* remove the ip tracker file `/etc/scredis_ips.json`
-* delete the bridge iface: `ip link delete scredis0 type bridge`
+* delete the bridge iface: `ip link delete scredis0 type bridge` (if you used `-i` flag)
 
 ##Usage
 
-`sudo sc-redis` launch the server and output its ip address. You can then connect to it directly:
-`redis-cli -h 10.0.5.XXX -p 6379`
+`sudo sc-redis [-v] [-i 10.0.5.XXX] [-c "redis conf, redis conf, redis conf"]`
+
+
+####flags
+
+- `-i 10.0.5.<XXX>`
+
+If this flag is used, the container uses the net namespace and is accessible through the *scredis0* bridge automatically created on the host.
+You can then connect to it this way: `redis-cli -h 10.0.5.<XXX> -p 6379`.
 
 If you want the server to be accessible outside of the host, you will need some iptables magic.
 
-####flags
+Note: it is user's responsibility to make sure there is no ip conflict
+
 
 - `-c "config line, config line"`
 
@@ -72,8 +77,6 @@ Display `sc-redis` version. Sample output:
 
 ##Roadmap
 
-- [ ] allow user to choose container ip address
-- [ ] allow to directly use the host net interface (and not `scredis0` bridge)
 - [ ] start using an existing rootfs (data persistence)
 
 ##Contributing

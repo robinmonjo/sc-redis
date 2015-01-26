@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path"
 	"text/template"
@@ -192,32 +193,41 @@ const containerJson = `
     "hostname": "redis",
     "namespaces": {
         "NEWIPC": true,
-        "NEWNET": true,
         "NEWNS": true,
         "NEWPID": true,
+        {{if .NetNamespace}} {{ .NetNamespace }} {{end}}
         "NEWUTS": true
     },
-    "networks": [
-        {
-            "address": "127.0.0.1/0",
-            "gateway": "localhost",
-            "mtu": 1500,
-            "type": "loopback"
-        },
-        {
-            "address": "{{.IpAddr}}",
-            "bridge": "scredis0",
-            "veth_prefix": "veth",
-            "gateway": "10.0.5.1",
-            "mtu": 1500,
-            "type": "veth"
-        }
-    ],
+    {{if .NetIfaces}} {{ .NetIfaces }} {{end}}
     "tty": false,
     "user": "root"
 }
 `
 
+const networkIfaces = `
+"networks": [
+    {
+        "address": "127.0.0.1/0",
+        "gateway": "localhost",
+        "mtu": 1500,
+        "type": "loopback"
+    },
+    {
+        "address": "{{.IpAddr}}",
+        "bridge": "scredis0",
+        "veth_prefix": "veth",
+        "gateway": "10.0.5.1",
+        "mtu": 1500,
+        "type": "veth"
+    }
+],
+`
+
+const networkNamespace = `
+  "NEWNET": true,
+`
+
+//if ipAddr == "", will use host network otherwise, will setup the net namespace
 func writeContainerJSON(rootfs, ipAddr string) error {
 	f, err := os.Create(path.Join(rootfs, "container.json"))
 	if err != nil {
@@ -225,11 +235,30 @@ func writeContainerJSON(rootfs, ipAddr string) error {
 	}
 	defer f.Close()
 
+	m := make(map[string]string)
+	m["IpAddr"] = ipAddr
+
+	if ipAddr != "" {
+		tIfaces := template.New("networks")
+		tIfaces, err = tIfaces.Parse(networkIfaces)
+		if err != nil {
+			return err
+		}
+		var netIfaces bytes.Buffer
+		if err := tIfaces.Execute(&netIfaces, map[string]string{"IpAddr": ipAddr}); err != nil {
+			return err
+		}
+		m["NetIfaces"] = netIfaces.String()
+		m["NetNamespace"] = networkNamespace
+	}
+
 	t := template.New("container.json")
 	t, err = t.Parse(containerJson)
 	if err != nil {
 		return err
 	}
-	t.Execute(f, map[string]string{"IpAddr": ipAddr})
-	return nil
+	//var tmp bytes.Buffer
+	return t.Execute(f, m)
+	//log.Println(tmp.String())
+	//return nil
 }

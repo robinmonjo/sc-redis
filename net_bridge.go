@@ -9,11 +9,6 @@ import (
 	"github.com/docker/libcontainer/netlink"
 )
 
-const (
-	bridgeName    string = "scredis0"
-	bridgeNetwork string = "10.0.5.0/8" //must match with waht inside container_json.go
-)
-
 func setupNetBridge() error {
 	// Enable IPv4 forwarding
 	if err := ioutil.WriteFile("/proc/sys/net/ipv4/ip_forward", []byte{'1', '\n'}, 0644); err != nil {
@@ -45,8 +40,4 @@ func setupNetBridge() error {
 	}
 
 	return nil
-}
-
-func bridgeInfo() string {
-	return "bridge " + bridgeName + " up " + bridgeNetwork
 }

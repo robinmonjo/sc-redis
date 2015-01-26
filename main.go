@@ -17,16 +17,17 @@ import (
 )
 
 const (
-	redisRootfsAsset    = "redis_rootfs.tar"
-	version             = "0.1"
+	version             = "0.2"
 	libcontainerVersion = "1.4.0"
 	redisVersion        = "2.8.19"
-	ipPoolFile          = "/etc/scredis_ips.json"
+	bridgeName          = "scredis0"
+	bridgeNetwork       = "10.0.5.0/8" //must match with what inside container_json.go
 )
 
 var (
 	showVersion *bool   = flag.Bool("v", false, "show version")
 	redisConfig *string = flag.String("c", "", "specify specific redis configuration")
+	bridgedIP   *string = flag.String("i", "", "use the net namespace with this ip (format: 10.0.5.XXX)")
 )
 
 func init() {
@@ -53,7 +54,7 @@ func main() {
 	}
 
 	rootfs := "scredis_" + time.Now().Format("20060102150405")
-	startContFn, ipID, err := prepareContainer(rootfs)
+	startContFn, err := prepareContainer(rootfs, *bridgedIP)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -61,16 +62,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	releaseIpAddr(ipID)
+
 	os.RemoveAll(rootfs)
 	os.Exit(exitCode)
 }
 
-//Prepare container rootfs + return the function to start it
-func prepareContainer(rootfs string) (func() (int, error), int, error) {
+//Prepare container rootfs + return the function to start it.
+//If ipAddr == "", will use host network, otherwise will setup net namelspace
+func prepareContainer(rootfs, ipAddr string) (func() (int, error), error) {
 	var (
 		err           error
-		ipID          int
 		containerConf *libcontainer.Config
 	)
 
@@ -78,7 +79,6 @@ func prepareContainer(rootfs string) (func() (int, error), int, error) {
 		//if something goes wrong during preparation, cleanup
 		if err != nil {
 			os.RemoveAll(rootfs)
-			releaseIpAddr(ipID)
 		}
 		color.Unset()
 	}()
@@ -89,40 +89,43 @@ func prepareContainer(rootfs string) (func() (int, error), int, error) {
 	log.Println("pid", os.Getpid())
 	log.Println("exporting redis container rootfs")
 	if err = exportRootfs(rootfs); err != nil {
-		return nil, ipID, err
+		return nil, err
 	}
 
 	//stage 1 configuring container
 	color.Set(color.FgBlue, color.Bold)
 	log.SetPrefix("[Stage 1] ")
 
-	if err = setupNetBridge(); err != nil {
-		return nil, ipID, err
+	if ipAddr != "" {
+		if err = setupNetBridge(); err != nil {
+			return nil, err
+		}
+		log.Println("bridge " + bridgeName + " up " + bridgeNetwork)
+		if err = validateIPAddr(ipAddr); err != nil {
+			return nil, err
+		}
+		log.Println("container IP address:", ipAddr)
+		ipAddr = ipAddr + "/8"
 	}
-	log.Println(bridgeInfo())
 
-	ipID, err = availableIPAddrID()
-	if err != nil {
-		return nil, ipID, err
-	}
-	ipAddr := "10.0.5." + strconv.Itoa(ipID) + "/8"
 	if err = writeContainerJSON(rootfs, ipAddr); err != nil {
-		return nil, ipID, err
+		return nil, err
 	}
-	log.Println("container IP address:", ipAddr)
+	log.Println("container config exported")
 	if err = writeRawRedisConf(path.Join(rootfs, "etc"), *redisConfig); err != nil {
-		return nil, ipID, err
+		return nil, err
 	}
+	log.Println("redis config exported")
 
 	containerConf, err = loadConfig(rootfs)
 	if err != nil {
-		return nil, ipID, err
+		return nil, err
 	}
 	fn := func() (int, error) {
 		return startContainer(containerConf, rootfs, []string{"redis-server", "/etc/redis.conf"})
 	}
 
-	return fn, ipID, nil
+	return fn, nil
 }
 
 // startContainer starts the container. Returns the exit status or -1 and an
@@ -171,7 +174,7 @@ func initProcess() {
 	runtime.LockOSThread()
 
 	rootfs, err = os.Getwd()
-	log.Println("container is in ", rootfs)
+	log.Println("container is in", rootfs)
 	if err != nil {
 		log.Fatal(err)
 	}

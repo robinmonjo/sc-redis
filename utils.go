@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/libcontainer"
@@ -40,80 +41,28 @@ func findUserArgs(args []string) []string {
 	return args[i:]
 }
 
-func loadInUseIPAddrIDs() ([]int, error) {
-	if _, err := os.Stat(ipPoolFile); os.IsNotExist(err) {
-		if err := ioutil.WriteFile(ipPoolFile, []byte("[]\n"), 0666); err != nil {
-			return nil, err
-		}
-	}
+func validateIPAddr(ip string) error {
+	formatErr := fmt.Errorf("invalid ip address %s. Expecting 10.0.5.XXX", ip)
 
-	f, err := os.Open(ipPoolFile)
-	if err != nil {
-		return nil, err
+	comps := strings.Split(ip, ".")
+	if len(comps) != 4 {
+		return formatErr
 	}
-	defer f.Close()
-
-	var ipAddrIDs []int
-	if err := json.NewDecoder(f).Decode(&ipAddrIDs); err != nil {
-		return nil, err
+	if comps[0] != "10" || comps[1] != "0" || comps[2] != "5" {
+		return formatErr
 	}
-	return ipAddrIDs, nil
-}
-
-func availableIPAddrID() (int, error) {
-	ipAddrIDs, err := loadInUseIPAddrIDs()
-	if err != nil {
-		return -1, err
-	}
-
-	bitVector := make([]bool, 252) //range is 2 .. 254
-	for _, i := range ipAddrIDs {
-		bitVector[i-2] = true
-	}
-
-	availableIPAddrID := -1
-	for i, inUse := range bitVector {
-		if !inUse {
-			availableIPAddrID = i + 2
-			break
-		}
-	}
-	if availableIPAddrID == -1 {
-		return -1, fmt.Errorf("no more ip addr available")
-	}
-
-	ipAddrIDs = append(ipAddrIDs, availableIPAddrID)
-	b, _ := json.Marshal(ipAddrIDs)
-	if err := ioutil.WriteFile(ipPoolFile, b, 0666); err != nil {
-		return -1, err
-	}
-
-	return availableIPAddrID, nil
-}
-
-func releaseIpAddr(ipID int) error {
-	ipAddrIDs, err := loadInUseIPAddrIDs()
+	ipID, err := strconv.Atoi(comps[3])
 	if err != nil {
 		return err
 	}
-	idx := -1
-	for i, v := range ipAddrIDs {
-		if v == ipID {
-			idx = i
-			break
-		}
+	if ipID < 2 || ipID > 254 {
+		return fmt.Errorf("%s out of ip range (2..254)", comps[3])
 	}
-	if idx == -1 {
-		return nil
-	}
-	ipAddrIDs = append(ipAddrIDs[:idx], ipAddrIDs[idx+1:]...)
-	b, _ := json.Marshal(ipAddrIDs)
-	return ioutil.WriteFile(ipPoolFile, b, 0666)
+	return nil
 }
 
 func exportRootfs(basePath string) error {
-	//export the tar
-	tar, err := Asset(redisRootfsAsset)
+	tar, err := Asset("redis_rootfs.tar")
 	if err != nil {
 		return err
 	}
