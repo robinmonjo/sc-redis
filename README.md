@@ -85,7 +85,7 @@ The Makefile contains a lot of info but basically, to get started:
 
 1. fork this repository and clone it
 2. `make vendor`
-3. `make redis-rootfs` (as it's not versionned)
+3. `make redis-rootfs` (as it's not versioned, you will need [cargo](https://github.com/robinmonjo/cargo) in your path)
 4. `make build` done !
 
 Note, if you are working on Vagrant, running `sc-redis` on a shared folder won't work (rootfs extraction will fail).
