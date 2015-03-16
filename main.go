@@ -13,7 +13,6 @@ import (
 
 	"github.com/docker/libcontainer"
 	"github.com/docker/libcontainer/namespaces"
-	"github.com/fatih/color"
 )
 
 const (
@@ -38,7 +37,6 @@ func main() {
 
 	if len(os.Args) >= 2 && os.Args[1] == "init" {
 		//stage 2 execute inside container
-		color.Set(color.FgGreen, color.Bold)
 		log.SetPrefix("[Stage 2] ")
 		log.Println("pid", os.Getpid(), "(inside container)") //will be pid one inside container
 
@@ -80,11 +78,9 @@ func prepareContainer(rootfs, ipAddr string) (func() (int, error), error) {
 		if err != nil {
 			os.RemoveAll(rootfs)
 		}
-		color.Unset()
 	}()
 
 	//stage 0 extracting rootfs
-	color.Set(color.FgYellow, color.Bold)
 	log.SetPrefix("[Stage 0] ")
 	log.Println("pid", os.Getpid())
 	log.Println("exporting redis container rootfs")
@@ -93,7 +89,6 @@ func prepareContainer(rootfs, ipAddr string) (func() (int, error), error) {
 	}
 
 	//stage 1 configuring container
-	color.Set(color.FgBlue, color.Bold)
 	log.SetPrefix("[Stage 1] ")
 
 	if ipAddr != "" {
@@ -192,7 +187,6 @@ func initProcess() {
 	pipe := os.NewFile(uintptr(pipeFd), "pipe")
 	args := findUserArgs(os.Args)
 	log.Println("executing", args)
-	color.Unset()
 	if err := namespaces.Init(container, rootfs, console, pipe, args); err != nil {
 		log.Fatalf("unable to initialize container: %s", err)
 	}

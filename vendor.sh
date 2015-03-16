@@ -40,6 +40,6 @@ clone() {
 }
 
 clone git github.com/docker/docker v1.4.1 #using archive and vendored libcontainer (v1.4.0)
-clone git github.com/fatih/color f19a133fbf02ea4974db468b07328745a8840da7
+clone git github.com/docker/libcontainer 53eca435e63db58b06cf796d3a9326db5fd42253
 
 echo "don't forget to add vendor folder to your GOPATH (export GOPATH=\$GOPATH:\`pwd\`/vendor)"
