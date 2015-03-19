@@ -257,8 +257,6 @@ func writeContainerJSON(rootfs, ipAddr string) error {
 	if err != nil {
 		return err
 	}
-	//var tmp bytes.Buffer
+
 	return t.Execute(f, m)
-	//log.Println(tmp.String())
-	//return nil
 }

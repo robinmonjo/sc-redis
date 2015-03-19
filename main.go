@@ -27,6 +27,7 @@ var (
 	showVersion *bool   = flag.Bool("v", false, "show version")
 	redisConfig *string = flag.String("c", "", "specify specific redis configuration")
 	bridgedIP   *string = flag.String("i", "", "use the net namespace with this ip (format: 10.0.5.XXX)")
+	workingDir  *string = flag.String("w", ".", "working directory")
 )
 
 func init() {
@@ -51,7 +52,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	rootfs := "scredis_" + time.Now().Format("20060102150405")
+	rootfs := path.Join(*workingDir, "scredis_"+time.Now().Format("20060102150405"))
 	startContFn, err := prepareContainer(rootfs, *bridgedIP)
 	if err != nil {
 		log.Fatal(err)

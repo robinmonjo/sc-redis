@@ -1,5 +1,6 @@
 GOPATH:=`pwd`/vendor:$(GOPATH)
-GOPATH:=$(GOPATH):`pwd`/vendor/src/github.com/docker/docker/vendor
+GOPATH:=`pwd`/vendor/src/github.com/docker/docker/vendor:$(GOPATH)
+GO:=$(shell which go)
 VERSION:=0.2
 HARDWARE=$(shell uname -m)
 DOCKER_IMAGE=robinmonjo/scredis
@@ -15,6 +16,11 @@ redis-rootfs:
 	cd /tmp && sudo tar cf redis_rootfs.tar -C redis_rootfs .
 	cd /tmp && go-bindata -o redis_rootfs.go -nomemcopy redis_rootfs.tar
 	mv /tmp/redis_rootfs.go .
+
+test:
+	#GOPATH=$(GOPATH) go build
+	sudo PATH=$(PATH):`pwd` GOPATH=$(GOPATH) $(GO) test
+
 
 release:
 	mkdir -p release

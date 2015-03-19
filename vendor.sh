@@ -7,15 +7,14 @@ cd "$(dirname "$BASH_SOURCE")"
 mkdir -p vendor
 cd vendor
 
-clone() {
-	vcs=$1
-	pkg=$2
-	rev=$3
+git_clone() {
+	pkg=$1
+	bra=$2
 
 	pkg_url=https://$pkg
 	target_dir=src/$pkg
 
-	echo "$pkg @ $rev: "
+	echo "$pkg @ $bra: "
 
 	if [ -d $target_dir ]; then
 		echo "rm old, $pkg"
@@ -23,23 +22,23 @@ clone() {
 	fi
 
 	echo "clone, $pkg"
-	case $vcs in
-		git)
-			git clone --quiet --no-checkout $pkg_url $target_dir
-			( cd $target_dir && git reset --quiet --hard $rev )
-			;;
-		hg)
-			hg clone --quiet --updaterev $rev $pkg_url $target_dir
-			;;
-	esac
-
-	echo "rm VCS, $vcs"
-	( cd $target_dir && rm -rf .{git,hg} )
-
+	git clone --depth 1 --quiet --branch $bra  $pkg_url $target_dir
 	echo "done"
 }
 
-clone git github.com/docker/docker v1.4.1 #using archive and vendored libcontainer (v1.4.0)
-clone git github.com/docker/libcontainer 53eca435e63db58b06cf796d3a9326db5fd42253
+go_get() {
+	pkg=$1
+
+	echo "go get $pkg"
+	GOPATH=`pwd` go get $pkg
+	echo "done"
+}
+
+#using archive and vendored libcontainer (v1.4.1)
+git_clone github.com/docker/docker v1.4.1
+
+#used for testing only
+go_get github.com/fzzy/radix/redis
+
 
 echo "don't forget to add vendor folder to your GOPATH (export GOPATH=\$GOPATH:\`pwd\`/vendor)"
