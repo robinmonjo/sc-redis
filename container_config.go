@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"os"
 	"syscall"
 
 	"github.com/docker/libcontainer/configs"
@@ -12,12 +11,7 @@ import (
 const defaultMountFlags = syscall.MS_NOEXEC | syscall.MS_NOSUID | syscall.MS_NODEV
 
 //if ipAddr == "", will use host network otherwise, will setup the net namespace
-func loadConfig(rootfs, ipAddr string) *configs.Config {
-	cwd, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
-	}
-
+func loadConfig(uid, rootfs, ipAddr string) *configs.Config {
 	var config = &configs.Config{
 		Rootfs: rootfs,
 		Capabilities: []string{
@@ -43,7 +37,7 @@ func loadConfig(rootfs, ipAddr string) *configs.Config {
 			{Type: configs.NEWPID},
 		}),
 		Cgroups: &configs.Cgroup{
-			Name:            cwd,
+			Name:            uid,
 			Parent:          "sc-redis",
 			AllowAllDevices: false,
 			AllowedDevices:  configs.DefaultAllowedDevices,

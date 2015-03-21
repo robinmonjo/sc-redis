@@ -860,6 +860,5 @@ func writeRedisConf(basePath string, conf []string) error {
 	if err != nil {
 		return err
 	}
-	t.Execute(f, conf)
-	return nil
+	return t.Execute(f, conf)
 }

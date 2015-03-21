@@ -77,14 +77,14 @@ func Test_config(t *testing.T) {
 }
 
 func Test_multi(t *testing.T) {
-	fmt.Println("spawning 5 instances ...")
+	fmt.Println("spawning 10 instances ...")
 	var wg sync.WaitGroup
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		port := fmt.Sprintf("909%d", i)
 		go func(port string) {
 			defer wg.Done()
-			launch(t, newBinary("127.0.0.1:"+port), "-c", "port "+port, "-n", "tmp_scredis_"+port)
+			launch(t, newBinary("127.0.0.1:"+port), "-c", "port "+port)
 			fmt.Printf("x ")
 		}(port)
 	}
@@ -93,14 +93,14 @@ func Test_multi(t *testing.T) {
 }
 
 func Test_multiBridge(t *testing.T) {
-	fmt.Println("spawning 5 instances on the bridge ...")
+	fmt.Println("spawning 10 instances on the bridge ...")
 	var wg sync.WaitGroup
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		ip := fmt.Sprintf("10.0.5.%d", 200+i)
 		go func(ip string) {
 			defer wg.Done()
-			launch(t, newBinary(ip+":6379"), "-i", ip, "-n", "tmp_scredis_"+ip)
+			launch(t, newBinary(ip+":6379"), "-i", ip)
 			fmt.Printf("x ")
 		}(ip)
 	}
@@ -124,10 +124,10 @@ func launch(t *testing.T, b *binary, args ...string) {
 
 	<-stopped
 	if errStart != nil || errConnect != nil || errStop != nil {
+		fmt.Println("--------------------------------------------------------------------")
 		fmt.Printf("\nStart error: %v\nConnect error: %v\nStop error: %v\n", errStart, errConnect, errStop)
 		b.printOutput()
+		fmt.Println("--------------------------------------------------------------------")
 		t.FailNow()
 	}
 }
-
-//more tests ideas: check FS is properly cleaned up, check veth is properly remove

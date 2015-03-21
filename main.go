@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"syscall"
-	"time"
 
 	"github.com/docker/libcontainer"
 	"github.com/docker/libcontainer/utils"
@@ -32,7 +31,6 @@ var (
 	redisConfig *string = flag.String("c", "", "specify specific redis configuration")
 	bridgedIP   *string = flag.String("i", "", "use the net namespace with this ip (format: 10.0.5.XXX)")
 	workingDir  *string = flag.String("w", ".", "working directory")
-	rootfsName  *string = flag.String("n", "", "name of the rootfs dir")
 )
 
 func init() {
@@ -43,8 +41,8 @@ func main() {
 
 	if len(os.Args) >= 2 && os.Args[1] == "init" {
 		//stage 1 execute inside container
-		log.SetPrefix("[Stage 1] ")
-		log.Println("pid", os.Getpid(), "(inside container)") //will be pid one inside container
+		log.SetPrefix("[container] ")
+		log.Println("pid", os.Getpid()) //will be pid one inside container
 
 		runtime.GOMAXPROCS(1)
 		runtime.LockOSThread()
@@ -66,16 +64,17 @@ func main() {
 		os.Exit(0)
 	}
 
-	name := *rootfsName
-	if name == "" {
-		name = "scredis_" + time.Now().Format("20060102150405")
+	uid, err := utils.GenerateRandomName("sc_redis_", 7)
+	if err != nil {
+		log.Fatal(err)
 	}
-	rootfs := path.Join(*workingDir, name)
+
+	rootfs := path.Join(*workingDir, uid)
 	rootfs, _ = filepath.Abs(rootfs)
 
-	//stage 0 extracting rootfs
-	log.SetPrefix("[Stage 0] ")
+	log.SetPrefix("[host] ")
 	log.Println("pid", os.Getpid())
+	log.Println("container uid", uid)
 	log.Println("exporting redis container rootfs")
 	if err := exportRootfs(rootfs); err != nil {
 		log.Fatal(err)
@@ -104,12 +103,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	contId, err := utils.GenerateRandomName("sc_redis_", 7)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	container, err := factory.Create(contId, loadConfig(rootfs, ipAddr))
+	container, err := factory.Create(uid, loadConfig(uid, rootfs, ipAddr))
 	if err != nil {
 		log.Fatal(err)
 	}

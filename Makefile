@@ -3,7 +3,7 @@ GOPATH:=$(GOPATH):`pwd`/vendor/src/github.com/docker/libcontainer/vendor:`pwd`/v
 GO:=$(shell which go)
 VERSION:=0.2
 HARDWARE=$(shell uname -m)
-DOCKER_IMAGE=robinmonjo/scredis
+DOCKER_IMAGE=robinmonjo/scredis2
 
 build: vendor
 	GOPATH=$(GOPATH) go build
