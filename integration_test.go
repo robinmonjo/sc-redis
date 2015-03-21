@@ -2,20 +2,22 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
-
-	_ "github.com/fzzy/radix/redis"
 )
 
 type binary struct {
-	name string
-	addr string
-	ps   *os.Process
+	name   string
+	addr   string
+	ps     *os.Process
+	stdout []byte
+	stderr []byte
 }
 
 func newBinary(addr string) *binary {
@@ -25,13 +27,18 @@ func newBinary(addr string) *binary {
 func (sr *binary) start(args ...string) error {
 	args = append([]string{"-w", os.TempDir()}, args...) //run test in /tmp
 	cmd := exec.Command(sr.name, args...)
+
+	stdout, _ := cmd.StdoutPipe()
+	stderr, _ := cmd.StderrPipe()
 	cmd.Start()
 	sr.ps = cmd.Process
+	sr.stdout, _ = ioutil.ReadAll(stdout)
+	sr.stderr, _ = ioutil.ReadAll(stderr)
 	return cmd.Wait()
 }
 
 func (sr *binary) waitUntilRunning() error {
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 30; i++ {
 		c, err := net.DialTimeout("tcp", sr.addr, 3*time.Second)
 		if err != nil {
 			time.Sleep(1 * time.Second)
@@ -45,6 +52,10 @@ func (sr *binary) waitUntilRunning() error {
 
 func (sr *binary) stop() error {
 	return sr.ps.Signal(syscall.SIGTERM)
+}
+
+func (sr *binary) printOutput() {
+	fmt.Printf("Stdout: %s\nStderr: %s\n", string(sr.stdout), string(sr.stderr))
 }
 
 func Test_start(t *testing.T) {
@@ -65,6 +76,21 @@ func Test_config(t *testing.T) {
 	fmt.Println("done")
 }
 
+func Test_multi(t *testing.T) {
+	fmt.Printf("spawning 10 instances ... ")
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		port := fmt.Sprintf("708%d", i)
+		go func(port string) {
+			defer wg.Done()
+			launch(t, newBinary("127.0.0.1:"+port), "-c", "port "+port, "-n", "tmp_scredis_"+port)
+		}(port)
+	}
+	wg.Wait()
+	fmt.Println("done")
+}
+
 func launch(t *testing.T, b *binary, args ...string) {
 	var (
 		errStart   error
@@ -82,6 +108,7 @@ func launch(t *testing.T, b *binary, args ...string) {
 	<-stopped
 	if errStart != nil || errConnect != nil || errStop != nil {
 		fmt.Printf("\nStart error: %v\nConnect error: %v\nStop error: %v\n", errStart, errConnect, errStop)
+		b.printOutput()
 		t.FailNow()
 	}
 }

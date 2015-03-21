@@ -29,7 +29,7 @@ release:
 	rm release/sc-redis
 
 clean:
-	rm -rf ./sc-redis ./release
+	rm -rf ./sc-redis ./release ./vendor/pkg
 
 vendor:
 	sh vendor.sh

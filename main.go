@@ -8,9 +8,11 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/docker/libcontainer"
+	"github.com/docker/libcontainer/utils"
 )
 
 const (
@@ -30,6 +32,7 @@ var (
 	redisConfig *string = flag.String("c", "", "specify specific redis configuration")
 	bridgedIP   *string = flag.String("i", "", "use the net namespace with this ip (format: 10.0.5.XXX)")
 	workingDir  *string = flag.String("w", ".", "working directory")
+	rootfsName  *string = flag.String("n", "", "name of the rootfs dir")
 )
 
 func init() {
@@ -39,12 +42,13 @@ func init() {
 func main() {
 
 	if len(os.Args) >= 2 && os.Args[1] == "init" {
-		//stage 2 execute inside container
-		log.SetPrefix("[Stage 2] ")
+		//stage 1 execute inside container
+		log.SetPrefix("[Stage 1] ")
 		log.Println("pid", os.Getpid(), "(inside container)") //will be pid one inside container
 
 		runtime.GOMAXPROCS(1)
 		runtime.LockOSThread()
+
 		factory, err := libcontainer.New("")
 		if err != nil {
 			log.Fatal(err)
@@ -62,7 +66,11 @@ func main() {
 		os.Exit(0)
 	}
 
-	rootfs := path.Join(*workingDir, "scredis_"+time.Now().Format("20060102150405"))
+	name := *rootfsName
+	if name == "" {
+		name = "scredis_" + time.Now().Format("20060102150405")
+	}
+	rootfs := path.Join(*workingDir, name)
 	rootfs, _ = filepath.Abs(rootfs)
 
 	//stage 0 extracting rootfs
@@ -76,9 +84,7 @@ func main() {
 	if err := writeRawRedisConf(path.Join(rootfs, "etc"), *redisConfig); err != nil {
 		log.Fatal(err)
 	}
-	log.Println("redis config exported")
-
-	log.SetPrefix("[Stage 1] ")
+	log.Println("writing redis configuration")
 
 	ipAddr := *bridgedIP
 	if ipAddr != "" {
@@ -93,12 +99,17 @@ func main() {
 		ipAddr = ipAddr + "/8"
 	}
 
-	factory, err := libcontainer.New(rootfs, libcontainer.InitArgs(os.Args[0], "init"))
+	factory, err := libcontainer.New(rootfs)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	container, err := factory.Create("sc_redis", loadConfig(rootfs, ipAddr))
+	contId, err := utils.GenerateRandomName("sc_redis_", 7)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	container, err := factory.Create(contId, loadConfig(rootfs, ipAddr))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -118,10 +129,11 @@ func main() {
 	}
 
 	// wait for the process to finish.
-	/*status*/ _, err = process.Wait()
+	status, err := process.Wait()
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println(status)
 
 	// destroy the container.
 	log.Println("Cleaning up")
@@ -129,6 +141,8 @@ func main() {
 	if err := os.RemoveAll(rootfs); err != nil {
 		log.Fatal(err)
 	}
+
+	os.Exit(utils.ExitStatus(status.Sys().(syscall.WaitStatus)))
 }
 
 func handleSignals(container *libcontainer.Process) {

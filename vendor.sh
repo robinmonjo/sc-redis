@@ -38,9 +38,7 @@ go_get() {
 git_clone github.com/docker/libcontainer master
 
 git_clone github.com/docker/docker v1.4.1
-
-#used for testing only
-go_get github.com/fzzy/radix/redis
+rm -rf src/github.com/docker/docker/vendor/src/github.com/docker/libcontainer #avoiding double dependency
 
 
 echo "don't forget to add vendor folder to your GOPATH (export GOPATH=\$GOPATH:\`pwd\`/vendor)"
