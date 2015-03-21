@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"syscall"
 	"testing"
 	"time"
 
-	"github.com/fzzy/radix/redis"
+	_ "github.com/fzzy/radix/redis"
 )
 
 type binary struct {
@@ -22,7 +23,7 @@ func newBinary(addr string) *binary {
 }
 
 func (sr *binary) start(args ...string) error {
-	args = append([]string{"-w", os.TempDir()}, args...) //run test is /tmp
+	args = append([]string{"-w", os.TempDir()}, args...) //run test in /tmp
 	cmd := exec.Command(sr.name, args...)
 	cmd.Start()
 	sr.ps = cmd.Process
@@ -31,7 +32,7 @@ func (sr *binary) start(args ...string) error {
 
 func (sr *binary) waitUntilRunning() error {
 	for i := 0; i < 5; i++ {
-		c, err := redis.DialTimeout("tcp", sr.addr, 3*time.Second)
+		c, err := net.DialTimeout("tcp", sr.addr, 3*time.Second)
 		if err != nil {
 			time.Sleep(1 * time.Second)
 			continue
@@ -65,20 +66,24 @@ func Test_config(t *testing.T) {
 }
 
 func launch(t *testing.T, b *binary, args ...string) {
-	var err error
+	var (
+		errStart   error
+		errConnect error
+		errStop    error
+	)
 	stopped := make(chan bool)
 	go func() {
-		err = b.start(args...)
+		errStart = b.start(args...)
 		stopped <- true
 	}()
-	if err := b.waitUntilRunning(); err != nil {
-		t.Fatal(err)
-	}
-	if err := b.stop(); err != nil {
-		t.Fatal(err)
-	}
+	errConnect = b.waitUntilRunning()
+	errStop = b.stop()
+
 	<-stopped
-	if err != nil {
-		t.Fatal(err)
+	if errStart != nil || errConnect != nil || errStop != nil {
+		fmt.Printf("\nStart error: %v\nConnect error: %v\nStop error: %v\n", errStart, errConnect, errStop)
+		t.FailNow()
 	}
 }
+
+//more tests ideas: check FS is properly cleaned up, check veth is properly remove

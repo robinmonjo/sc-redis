@@ -15,19 +15,19 @@ func setupNetBridge() error {
 		return err
 	}
 
-	if err := netlink.CreateBridge(bridgeName, true); err != nil {
+	if err := netlink.CreateBridge(vethBridge, true); err != nil {
 		// the bridge may already exist, therefore we can ignore an "exists" error
 		if !os.IsExist(err) {
 			return err
 		}
 	}
 
-	iface, err := net.InterfaceByName(bridgeName)
+	iface, err := net.InterfaceByName(vethBridge)
 	if err != nil {
 		return err
 	}
 
-	ipAddr, ipNet, err := net.ParseCIDR(bridgeNetwork)
+	ipAddr, ipNet, err := net.ParseCIDR(vethNetwork)
 	if err != nil {
 		return err
 	}

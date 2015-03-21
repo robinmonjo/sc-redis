@@ -1,5 +1,5 @@
 GOPATH:=`pwd`/vendor:$(GOPATH)
-GOPATH:=`pwd`/vendor/src/github.com/docker/docker/vendor:$(GOPATH)
+GOPATH:=$(GOPATH):`pwd`/vendor/src/github.com/docker/libcontainer/vendor:`pwd`/vendor/src/github.com/docker/docker/vendor
 GO:=$(shell which go)
 VERSION:=0.2
 HARDWARE=$(shell uname -m)
@@ -18,7 +18,7 @@ redis-rootfs:
 	mv /tmp/redis_rootfs.go .
 
 test:
-	#GOPATH=$(GOPATH) go build
+	GOPATH=$(GOPATH) go build
 	sudo PATH=$(PATH):`pwd` GOPATH=$(GOPATH) $(GO) test
 
 

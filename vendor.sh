@@ -34,7 +34,9 @@ go_get() {
 	echo "done"
 }
 
-#using archive and vendored libcontainer (v1.4.1)
+
+git_clone github.com/docker/libcontainer master
+
 git_clone github.com/docker/docker v1.4.1
 
 #used for testing only
