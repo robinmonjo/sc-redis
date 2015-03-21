@@ -77,15 +77,32 @@ func Test_config(t *testing.T) {
 }
 
 func Test_multi(t *testing.T) {
-	fmt.Printf("spawning 10 instances ... ")
+	fmt.Println("spawning 5 instances ...")
 	var wg sync.WaitGroup
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 5; i++ {
 		wg.Add(1)
-		port := fmt.Sprintf("708%d", i)
+		port := fmt.Sprintf("909%d", i)
 		go func(port string) {
 			defer wg.Done()
 			launch(t, newBinary("127.0.0.1:"+port), "-c", "port "+port, "-n", "tmp_scredis_"+port)
+			fmt.Printf("x ")
 		}(port)
+	}
+	wg.Wait()
+	fmt.Println("done")
+}
+
+func Test_multiBridge(t *testing.T) {
+	fmt.Println("spawning 5 instances on the bridge ...")
+	var wg sync.WaitGroup
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		ip := fmt.Sprintf("10.0.5.%d", 200+i)
+		go func(ip string) {
+			defer wg.Done()
+			launch(t, newBinary(ip+":6379"), "-i", ip, "-n", "tmp_scredis_"+ip)
+			fmt.Printf("x ")
+		}(ip)
 	}
 	wg.Wait()
 	fmt.Println("done")
