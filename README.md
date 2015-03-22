@@ -37,7 +37,7 @@ Do not use it if you need storage persistence.
 ##Installation
 
 ````bash
-curl -sL https://github.com/robinmonjo/sc-redis/releases/download/v0.2/sc-redis-v0.2_x86_64.tgz | tar -C /usr/local/bin -zxf -
+curl -sL https://github.com/robinmonjo/sc-redis/releases/download/v1.0/sc-redis-v1.0_x86_64.tgz | tar -C /usr/local/bin -zxf -
 ````
 
 To uninstall:
