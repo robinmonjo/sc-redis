@@ -1,33 +1,30 @@
 package main
 
 import (
-	"flag"
+	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path"
+	"path/filepath"
 	"runtime"
-	"strconv"
-	"time"
+	"syscall"
 
+	"github.com/codegangsta/cli"
 	"github.com/docker/libcontainer"
-	"github.com/docker/libcontainer/namespaces"
-	"github.com/fatih/color"
+	"github.com/docker/libcontainer/utils"
 )
 
 const (
-	version             = "0.2"
-	libcontainerVersion = "1.4.0"
+	//versions
+	version             = "1.0"
+	libcontainerVersion = "b6cf7a6c8520fd21e75f8b3becec6dc355d844b0"
 	redisVersion        = "2.8.19"
-	bridgeName          = "scredis0"
-	bridgeNetwork       = "10.0.5.0/8" //must match with what inside container_json.go
-)
 
-var (
-	showVersion *bool   = flag.Bool("v", false, "show version")
-	redisConfig *string = flag.String("c", "", "specify specific redis configuration")
-	bridgedIP   *string = flag.String("i", "", "use the net namespace with this ip (format: 10.0.5.XXX)")
+	//bridge
+	vethBridge  = "scredis0"
+	vethNetwork = "10.0.5.0/8"
+	vethGateway = "10.0.5.1"
 )
 
 func init() {
@@ -35,165 +32,134 @@ func init() {
 }
 
 func main() {
-
-	if len(os.Args) >= 2 && os.Args[1] == "init" {
-		//stage 2 execute inside container
-		color.Set(color.FgGreen, color.Bold)
-		log.SetPrefix("[Stage 2] ")
-		log.Println("pid", os.Getpid(), "(inside container)") //will be pid one inside container
-
-		initProcess()
-		return
+	app := cli.NewApp()
+	app.Name = "sc-redis"
+	app.Version = fmt.Sprintf("sc-redis v%s (redis v%s, libcontainer %s)", version, redisVersion, libcontainerVersion)
+	app.Author = "Robin Monjo"
+	app.Email = "robinmonjo@gmail.com"
+	app.Usage = "self contained redis-server"
+	app.Flags = []cli.Flag{
+		cli.StringFlag{Name: "config, c", Usage: "redis configuration, e.g: \"requirepass foobar, port 9999, ...\""},
+		cli.StringFlag{Name: "ip, i", Usage: "use the net namespace with the given ip address, format: 10.0.5.xxx"},
+		cli.StringFlag{Name: "working_dir, w", Value: ".", Usage: "working directory where container are created"},
+	}
+	app.Commands = []cli.Command{
+		cli.Command{
+			Name:   "init",
+			Usage:  "container init, should never be invoked manually",
+			Action: initAction,
+		},
+	}
+	app.Action = func(c *cli.Context) {
+		exit, err := start(c)
+		if err != nil {
+			log.Fatal(err)
+		}
+		os.Exit(exit)
 	}
 
-	flag.Parse()
-
-	if *showVersion {
-		log.Printf("sc-redis v%s (redis v%s, libcontainer v%s)", version, redisVersion, libcontainerVersion)
-		os.Exit(0)
-	}
-
-	rootfs := "scredis_" + time.Now().Format("20060102150405")
-	startContFn, err := prepareContainer(rootfs, *bridgedIP)
-	if err != nil {
+	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
-	exitCode, err := startContFn()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	os.RemoveAll(rootfs)
-	os.Exit(exitCode)
 }
 
-//Prepare container rootfs + return the function to start it.
-//If ipAddr == "", will use host network, otherwise will setup net namelspace
-func prepareContainer(rootfs, ipAddr string) (func() (int, error), error) {
-	var (
-		err           error
-		containerConf *libcontainer.Config
-	)
+func initAction(c *cli.Context) {
+	log.SetPrefix("[container] ")
 
-	defer func() {
-		//if something goes wrong during preparation, cleanup
-		if err != nil {
-			os.RemoveAll(rootfs)
-		}
-		color.Unset()
-	}()
+	log.Println("pid", os.Getpid()) //will be pid one inside container
+	runtime.GOMAXPROCS(1)
+	runtime.LockOSThread()
 
-	//stage 0 extracting rootfs
-	color.Set(color.FgYellow, color.Bold)
-	log.SetPrefix("[Stage 0] ")
-	log.Println("pid", os.Getpid())
-	log.Println("exporting redis container rootfs")
-	if err = exportRootfs(rootfs); err != nil {
-		return nil, err
+	factory, err := libcontainer.New("")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("starting redis")
+	if err := factory.StartInitialization(3); err != nil {
+		log.Fatal(err)
+	}
+	panic("This line should never been executed")
+}
+
+func start(c *cli.Context) (int, error) {
+	log.SetPrefix("[host] ")
+
+	uid, err := utils.GenerateRandomName("sc_redis_", 7)
+	if err != nil {
+		return 1, err
 	}
 
-	//stage 1 configuring container
-	color.Set(color.FgBlue, color.Bold)
-	log.SetPrefix("[Stage 1] ")
+	log.Println("pid", os.Getpid())
+	log.Println("container uid:", uid)
+	log.Println("exporting container rootfs")
 
+	rootfs := path.Join(c.GlobalString("working_dir"), uid)
+	rootfs, _ = filepath.Abs(rootfs)
+
+	defer os.RemoveAll(rootfs)
+	if err := exportRootfs(rootfs); err != nil {
+		return 1, err
+	}
+
+	log.Println("writing redis configuration")
+	if err := writeRawRedisConf(path.Join(rootfs, "etc"), c.GlobalString("config")); err != nil {
+		return 1, err
+	}
+
+	ipAddr := c.GlobalString("ip")
 	if ipAddr != "" {
-		if err = setupNetBridge(); err != nil {
-			return nil, err
+		if err := setupNetBridge(); err != nil {
+			return 1, err
 		}
-		log.Println("bridge " + bridgeName + " up " + bridgeNetwork)
-		if err = validateIPAddr(ipAddr); err != nil {
-			return nil, err
+		log.Println("bridge " + vethBridge + " up " + vethNetwork)
+		if err := validateIPAddr(ipAddr); err != nil {
+			return 1, err
 		}
 		log.Println("container IP address:", ipAddr)
 		ipAddr = ipAddr + "/8"
 	}
 
-	if err = writeContainerJSON(rootfs, ipAddr); err != nil {
-		return nil, err
-	}
-	log.Println("container config exported")
-	if err = writeRawRedisConf(path.Join(rootfs, "etc"), *redisConfig); err != nil {
-		return nil, err
-	}
-	log.Println("redis config exported")
-
-	containerConf, err = loadConfig(rootfs)
+	factory, err := libcontainer.New(rootfs)
 	if err != nil {
-		return nil, err
-	}
-	fn := func() (int, error) {
-		return startContainer(containerConf, rootfs, []string{"redis-server", "/etc/redis.conf"})
+		return 1, err
 	}
 
-	return fn, nil
+	container, err := factory.Create(uid, loadConfig(uid, rootfs, ipAddr))
+	if err != nil {
+		return 1, err
+	}
+	process := &libcontainer.Process{
+		Args:   []string{"redis-server", "/etc/redis.conf"},
+		Env:    []string{"PATH=/usr/local/bin"},
+		User:   "root",
+		Stdin:  os.Stdin,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+	}
+
+	go handleSignals(process)
+
+	if err := container.Start(process); err != nil {
+		return 1, err
+	}
+
+	// wait for the process to finish.
+	status, err := process.Wait()
+	if err != nil {
+		return 1, err
+	}
+
+	// destroy the container.
+	log.Println("Cleaning up")
+	container.Destroy()
+
+	return utils.ExitStatus(status.Sys().(syscall.WaitStatus)), nil
 }
 
-// startContainer starts the container. Returns the exit status or -1 and an
-// error.
-//
-// Signals sent to the current process will be forwarded to container.
-func startContainer(container *libcontainer.Config, rootfs string, args []string) (int, error) {
-	var (
-		cmd     *exec.Cmd
-		sigc    = make(chan os.Signal, 10)
-		console = ""
-	)
-
+func handleSignals(container *libcontainer.Process) {
+	sigc := make(chan os.Signal, 10)
 	signal.Notify(sigc)
-
-	createCommand := func(container *libcontainer.Config, console, rootfs, init string, pipe *os.File, args []string) *exec.Cmd {
-		cmd = namespaces.DefaultCreateCommand(container, console, rootfs, init, pipe, args)
-		cmd.Env = append(cmd.Env, "rootfs="+rootfs)
-		return cmd
-	}
-
-	startCallback := func() {
-		go func() {
-			for sig := range sigc {
-				cmd.Process.Signal(sig)
-			}
-		}()
-	}
-
-	return namespaces.Exec(container, os.Stdin, os.Stdout, os.Stderr, console, rootfs, args, createCommand, startCallback)
-}
-
-//container pid 1 code
-func initProcess() {
-	var (
-		console   = os.Getenv("console")
-		rawPipeFd = os.Getenv("pipe")
-		rootfs    = os.Getenv("rootfs")
-	)
-
-	err := os.Chdir(rootfs)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	runtime.LockOSThread()
-
-	rootfs, err = os.Getwd()
-	log.Println("container is in", rootfs)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	container, err := loadConfig(".")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	pipeFd, err := strconv.Atoi(rawPipeFd)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	pipe := os.NewFile(uintptr(pipeFd), "pipe")
-	args := findUserArgs(os.Args)
-	log.Println("executing", args)
-	color.Unset()
-	if err := namespaces.Init(container, rootfs, console, pipe, args); err != nil {
-		log.Fatalf("unable to initialize container: %s", err)
+	for sig := range sigc {
+		container.Signal(sig)
 	}
 }

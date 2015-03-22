@@ -7,10 +7,28 @@ cd "$(dirname "$BASH_SOURCE")"
 mkdir -p vendor
 cd vendor
 
-clone() {
-	vcs=$1
-	pkg=$2
-	rev=$3
+git_clone_light() {
+	pkg=$1
+	bra=$2
+
+	pkg_url=https://$pkg
+	target_dir=src/$pkg
+
+	echo "$pkg @ $bra: "
+
+	if [ -d $target_dir ]; then
+		echo "rm old, $pkg"
+		rm -fr $target_dir
+	fi
+
+	echo "clone, $pkg"
+	git clone --depth 1 --quiet --branch $bra  $pkg_url $target_dir
+	echo "done"
+}
+
+git_clone() {
+	pkg=$1
+	rev=$2
 
 	pkg_url=https://$pkg
 	target_dir=src/$pkg
@@ -23,23 +41,26 @@ clone() {
 	fi
 
 	echo "clone, $pkg"
-	case $vcs in
-		git)
-			git clone --quiet --no-checkout $pkg_url $target_dir
-			( cd $target_dir && git reset --quiet --hard $rev )
-			;;
-		hg)
-			hg clone --quiet --updaterev $rev $pkg_url $target_dir
-			;;
-	esac
-
-	echo "rm VCS, $vcs"
-	( cd $target_dir && rm -rf .{git,hg} )
-
+	git clone --quiet --no-checkout $pkg_url $target_dir
+	( cd $target_dir && git reset --quiet --hard $rev )
 	echo "done"
 }
 
-clone git github.com/docker/docker v1.4.1 #using archive and vendored libcontainer (v1.4.0)
-clone git github.com/fatih/color f19a133fbf02ea4974db468b07328745a8840da7
+go_get() {
+	pkg=$1
+
+	echo "go get $pkg"
+	GOPATH=`pwd` go get $pkg
+	echo "done"
+}
+
+
+git_clone github.com/docker/libcontainer b6cf7a6c8520fd21e75f8b3becec6dc355d844b0
+
+git_clone_light github.com/docker/docker v1.4.1
+rm -rf src/github.com/docker/docker/vendor/src/github.com/docker/libcontainer #avoiding double dependency
+
+git_clone_light github.com/codegangsta/cli v1.2.0
+
 
 echo "don't forget to add vendor folder to your GOPATH (export GOPATH=\$GOPATH:\`pwd\`/vendor)"
