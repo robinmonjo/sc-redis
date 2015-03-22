@@ -51,10 +51,10 @@ To uninstall:
 
 ####flags
 
-- `-i 10.0.5.<XXX>`
+- `-i 10.0.5.<xxx>`
 
 If this flag is used, the container uses the net namespace and is accessible through the *scredis0* bridge automatically created on the host.
-You can then connect to it this way: `redis-cli -h 10.0.5.<XXX> -p 6379`.
+You can then connect to it this way: `redis-cli -h 10.0.5.<xxx> -p 6379`.
 
 If you want the server to be accessible outside of the host, you will need some iptables magic.
 

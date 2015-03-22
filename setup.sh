@@ -6,13 +6,13 @@ sudo apt-get update -qq
 
 echo "Installing base stack"
 
-packagelist=(
+packages=(
 	cgroup-lite             #this is important !!
 	git
   curl
 )
 
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ${packagelist[@]}
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ${packages[@]}
 
 curl -sL https://github.com/robinmonjo/krgo/releases/download/v1.5.0/krgo-v1.5.0_x86_64.tgz | tar -C /usr/local/bin -zxf -
 
