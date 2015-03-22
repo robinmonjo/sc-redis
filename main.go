@@ -37,10 +37,11 @@ func main() {
 	app.Version = fmt.Sprintf("sc-redis v%s (redis v%s, libcontainer %s)", version, redisVersion, libcontainerVersion)
 	app.Author = "Robin Monjo"
 	app.Email = "robinmonjo@gmail.com"
+	app.Usage = "self contained redis-server"
 	app.Flags = []cli.Flag{
-		cli.StringFlag{Name: "config, c", Usage: "redis configuration (e.g: \"requirepass foobar, port 9999, ...\")"},
-		cli.StringFlag{Name: "ip, i", Usage: "use the net namespace with the given ip address (format: 10.0.5.XXX)"},
-		cli.StringFlag{Name: "working_dir, w", Value: "./", Usage: "working directory where container are created"},
+		cli.StringFlag{Name: "config, c", Usage: "redis configuration, e.g: \"requirepass foobar, port 9999, ...\""},
+		cli.StringFlag{Name: "ip, i", Usage: "use the net namespace with the given ip address, format: 10.0.5.xxx"},
+		cli.StringFlag{Name: "working_dir, w", Value: ".", Usage: "working directory where container are created"},
 	}
 	app.Commands = []cli.Command{
 		cli.Command{
@@ -64,8 +65,8 @@ func main() {
 
 func initAction(c *cli.Context) {
 	log.SetPrefix("[container] ")
-	log.Println("pid", os.Getpid()) //will be pid one inside container
 
+	log.Println("pid", os.Getpid()) //will be pid one inside container
 	runtime.GOMAXPROCS(1)
 	runtime.LockOSThread()
 
@@ -88,12 +89,13 @@ func start(c *cli.Context) (int, error) {
 		return 1, err
 	}
 
+	log.Println("pid", os.Getpid())
+	log.Println("container uid:", uid)
+	log.Println("exporting container rootfs")
+
 	rootfs := path.Join(c.GlobalString("working_dir"), uid)
 	rootfs, _ = filepath.Abs(rootfs)
 
-	log.Println("pid", os.Getpid())
-	log.Println("container uid", uid)
-	log.Println("exporting redis container rootfs")
 	defer os.RemoveAll(rootfs)
 	if err := exportRootfs(rootfs); err != nil {
 		return 1, err
