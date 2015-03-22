@@ -16,8 +16,8 @@ import (
 
 const (
 	//versions
-	version             = "0.2"
-	libcontainerVersion = "1.4.0"
+	version             = "1.0"
+	libcontainerVersion = "master"
 	redisVersion        = "2.8.19"
 
 	//bridge
@@ -127,7 +127,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println(status)
 
 	// destroy the container.
 	log.Println("Cleaning up")

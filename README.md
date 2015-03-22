@@ -75,10 +75,6 @@ Display `sc-redis` version. Sample output:
 
 `sc-redis v0.1 (redis v2.8.19, libcontainer v1.4.0)`
 
-##Roadmap
-
-- [ ] start using an existing rootfs (data persistence)
-
 ##Contributing
 
 The Makefile contains a lot of info but basically, to get started:
