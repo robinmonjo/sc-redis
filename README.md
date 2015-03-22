@@ -4,13 +4,12 @@ Super fast and easy way to deploy (containerized) redis-server:
 
 ````bash
 $  sc-redis
-[Stage 0] pid 5768
-[Stage 0] exporting redis container rootfs
-[Stage 1] container config exported
-[Stage 1] redis config exported
-[Stage 2] pid 1 (inside container)
-[Stage 2] container is in /tmp/scredis_20150126222801
-[Stage 2] executing [redis-server /etc/redis.conf]
+[host] pid 4840
+[host] container uid sc_redis_2d24808
+[host] exporting redis container rootfs
+[host] writing redis configuration
+[container] pid 1
+[container] starting redis
 
 [...] #redis-server output
 
@@ -47,7 +46,7 @@ To uninstall:
 
 ##Usage
 
-`sudo sc-redis [-v] [-i 10.0.5.XXX] [-c "redis conf, redis conf, redis conf"]`
+`sudo sc-redis [-v] [-i 10.0.5.xxx] [-c "redis conf, redis conf, redis conf"] [-w working_directory]`
 
 
 ####flags
@@ -69,11 +68,15 @@ will be written at the end of the [default `redis.conf`](https://raw.githubuserc
 
 Example: `sc-redis -c "requirepass foobar, port 9999"`
 
+- `-w working_directory`
+
+Directory where to extract container rootfs. Current working directory by default.
+
 - `-v`
 
 Display `sc-redis` version. Sample output:
 
-`sc-redis v0.1 (redis v2.8.19, libcontainer v1.4.0)`
+`sc-redis version sc-redis v1.0 (redis v2.8.19, libcontainer b6cf7a6c8520fd21e75f8b3becec6dc355d844b0)`
 
 ##Contributing
 
@@ -81,10 +84,10 @@ The Makefile contains a lot of info but basically, to get started:
 
 1. fork this repository and clone it
 2. `make vendor`
-3. `make redis-rootfs` (as it's not versioned, you will need [cargo](https://github.com/robinmonjo/cargo) in your path)
+3. `make redis-rootfs` (as it's not versioned, you will need [krgo](https://github.com/robinmonjo/krgo) in your path)
 4. `make build` done !
 
-Note, if you are working on Vagrant, running `sc-redis` on a shared folder won't work (rootfs extraction will fail).
+Note, if you are working on Vagrant, running `sc-redis` on a shared folder won't work (rootfs extraction will fail). You can run integration tests with `make test`.
 
 Feel free to report any issues or improvement ideas if you have some.
 
@@ -93,7 +96,7 @@ One command deployment compensates for fat binaries ;)
 
 ##Credits
 
-* libcontainer [guys](https://github.com/docker/libcontainer/blob/master/MAINTAINERS) for their amazing work
+* libcontainer [guys](https://github.com/docker/libcontainer/blob/master/MAINTAINERS) for their amazing work on libcontainer and [nsinit](https://github.com/docker/libcontainer/tree/master/nsinit)
 * inspired by [@crosbymichael's tweet](https://twitter.com/crosbymichael/status/543235554263830528)
 
 ##License
