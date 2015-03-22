@@ -1,7 +1,7 @@
 package main
 
 import (
-	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"syscall"
 
+	"github.com/codegangsta/cli"
 	"github.com/docker/libcontainer"
 	"github.com/docker/libcontainer/utils"
 )
@@ -17,7 +18,7 @@ import (
 const (
 	//versions
 	version             = "1.0"
-	libcontainerVersion = "master"
+	libcontainerVersion = "b6cf7a6c8520fd21e75f8b3becec6dc355d844b0"
 	redisVersion        = "2.8.19"
 
 	//bridge
@@ -26,73 +27,91 @@ const (
 	vethGateway = "10.0.5.1"
 )
 
-var (
-	showVersion *bool   = flag.Bool("v", false, "show version")
-	redisConfig *string = flag.String("c", "", "specify specific redis configuration")
-	bridgedIP   *string = flag.String("i", "", "use the net namespace with this ip (format: 10.0.5.XXX)")
-	workingDir  *string = flag.String("w", ".", "working directory")
-)
-
 func init() {
 	log.SetFlags(0) //no date time
 }
 
 func main() {
-
-	if len(os.Args) >= 2 && os.Args[1] == "init" {
-		//stage 1 execute inside container
-		log.SetPrefix("[container] ")
-		log.Println("pid", os.Getpid()) //will be pid one inside container
-
-		runtime.GOMAXPROCS(1)
-		runtime.LockOSThread()
-
-		factory, err := libcontainer.New("")
+	app := cli.NewApp()
+	app.Name = "sc-redis"
+	app.Version = fmt.Sprintf("sc-redis v%s (redis v%s, libcontainer %s)", version, redisVersion, libcontainerVersion)
+	app.Author = "Robin Monjo"
+	app.Email = "robinmonjo@gmail.com"
+	app.Flags = []cli.Flag{
+		cli.StringFlag{Name: "config, c", Usage: "redis configuration (e.g: \"requirepass foobar, port 9999, ...\")"},
+		cli.StringFlag{Name: "ip, i", Usage: "use the net namespace with the given ip address (format: 10.0.5.XXX)"},
+		cli.StringFlag{Name: "working_dir, w", Value: "./", Usage: "working directory where container are created"},
+	}
+	app.Commands = []cli.Command{
+		cli.Command{
+			Name:   "init",
+			Usage:  "container init, should never be invoked manually",
+			Action: initAction,
+		},
+	}
+	app.Action = func(c *cli.Context) {
+		exit, err := start(c)
 		if err != nil {
 			log.Fatal(err)
 		}
-		if err := factory.StartInitialization(3); err != nil {
-			log.Fatal(err)
-		}
-		panic("This line should never been executed")
+		os.Exit(exit)
 	}
 
-	flag.Parse()
-
-	if *showVersion {
-		log.Printf("sc-redis v%s (redis v%s, libcontainer v%s)", version, redisVersion, libcontainerVersion)
-		os.Exit(0)
+	if err := app.Run(os.Args); err != nil {
+		log.Fatal(err)
 	}
+}
 
-	uid, err := utils.GenerateRandomName("sc_redis_", 7)
+func initAction(c *cli.Context) {
+	log.SetPrefix("[container] ")
+	log.Println("pid", os.Getpid()) //will be pid one inside container
+
+	runtime.GOMAXPROCS(1)
+	runtime.LockOSThread()
+
+	factory, err := libcontainer.New("")
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("starting redis")
+	if err := factory.StartInitialization(3); err != nil {
+		log.Fatal(err)
+	}
+	panic("This line should never been executed")
+}
 
-	rootfs := path.Join(*workingDir, uid)
+func start(c *cli.Context) (int, error) {
+	log.SetPrefix("[host] ")
+
+	uid, err := utils.GenerateRandomName("sc_redis_", 7)
+	if err != nil {
+		return 1, err
+	}
+
+	rootfs := path.Join(c.GlobalString("working_dir"), uid)
 	rootfs, _ = filepath.Abs(rootfs)
 
-	log.SetPrefix("[host] ")
 	log.Println("pid", os.Getpid())
 	log.Println("container uid", uid)
 	log.Println("exporting redis container rootfs")
+	defer os.RemoveAll(rootfs)
 	if err := exportRootfs(rootfs); err != nil {
-		log.Fatal(err)
+		return 1, err
 	}
 
-	if err := writeRawRedisConf(path.Join(rootfs, "etc"), *redisConfig); err != nil {
-		log.Fatal(err)
-	}
 	log.Println("writing redis configuration")
+	if err := writeRawRedisConf(path.Join(rootfs, "etc"), c.GlobalString("config")); err != nil {
+		return 1, err
+	}
 
-	ipAddr := *bridgedIP
+	ipAddr := c.GlobalString("ip")
 	if ipAddr != "" {
 		if err := setupNetBridge(); err != nil {
-			log.Fatal(err)
+			return 1, err
 		}
 		log.Println("bridge " + vethBridge + " up " + vethNetwork)
 		if err := validateIPAddr(ipAddr); err != nil {
-			log.Fatal(err)
+			return 1, err
 		}
 		log.Println("container IP address:", ipAddr)
 		ipAddr = ipAddr + "/8"
@@ -100,12 +119,12 @@ func main() {
 
 	factory, err := libcontainer.New(rootfs)
 	if err != nil {
-		log.Fatal(err)
+		return 1, err
 	}
 
 	container, err := factory.Create(uid, loadConfig(uid, rootfs, ipAddr))
 	if err != nil {
-		log.Fatal(err)
+		return 1, err
 	}
 	process := &libcontainer.Process{
 		Args:   []string{"redis-server", "/etc/redis.conf"},
@@ -119,23 +138,20 @@ func main() {
 	go handleSignals(process)
 
 	if err := container.Start(process); err != nil {
-		log.Fatal(err)
+		return 1, err
 	}
 
 	// wait for the process to finish.
 	status, err := process.Wait()
 	if err != nil {
-		log.Fatal(err)
+		return 1, err
 	}
 
 	// destroy the container.
 	log.Println("Cleaning up")
 	container.Destroy()
-	if err := os.RemoveAll(rootfs); err != nil {
-		log.Fatal(err)
-	}
 
-	os.Exit(utils.ExitStatus(status.Sys().(syscall.WaitStatus)))
+	return utils.ExitStatus(status.Sys().(syscall.WaitStatus)), nil
 }
 
 func handleSignals(container *libcontainer.Process) {
