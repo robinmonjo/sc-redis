@@ -23,7 +23,7 @@ const (
 
 	//bridge
 	vethBridge  = "scredis0"
-	vethNetwork = "10.0.5.0/8"
+	vethNetwork = "10.0.5.1/24"
 	vethGateway = "10.0.5.1"
 )
 

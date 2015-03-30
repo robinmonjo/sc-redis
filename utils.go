@@ -21,7 +21,9 @@ func setupNetBridge() error {
 
 	if err := netlink.CreateBridge(vethBridge, true); err != nil {
 		// the bridge may already exist, therefore we can ignore an "exists" error
-		if !os.IsExist(err) {
+		if os.IsExist(err) {
+			return nil
+		} else {
 			return err
 		}
 	}
