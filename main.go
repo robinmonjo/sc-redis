@@ -17,7 +17,7 @@ import (
 
 const (
 	//versions
-	version             = "1.0"
+	version             = "1.1"
 	libcontainerVersion = "b6cf7a6c8520fd21e75f8b3becec6dc355d844b0"
 	redisVersion        = "2.8.19"
 
