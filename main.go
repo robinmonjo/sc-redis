@@ -17,7 +17,7 @@ import (
 
 const (
 	//versions
-	version             = "1.1"
+	version             = "1.1.1"
 	libcontainerVersion = "b6cf7a6c8520fd21e75f8b3becec6dc355d844b0"
 	redisVersion        = "2.8.19"
 
@@ -34,7 +34,7 @@ func init() {
 func main() {
 	app := cli.NewApp()
 	app.Name = "sc-redis"
-	app.Version = fmt.Sprintf("sc-redis v%s (redis v%s, libcontainer %s)", version, redisVersion, libcontainerVersion)
+	app.Version = fmt.Sprintf("v%s (redis v%s, libcontainer %s)", version, redisVersion, libcontainerVersion)
 	app.Author = "Robin Monjo"
 	app.Email = "robinmonjo@gmail.com"
 	app.Usage = "self contained redis-server"

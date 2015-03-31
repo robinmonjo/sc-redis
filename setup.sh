@@ -10,6 +10,7 @@ packages=(
 	cgroup-lite             #this is important !!
 	git
   curl
+	make
 )
 
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ${packages[@]}
