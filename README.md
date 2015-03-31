@@ -37,7 +37,7 @@ Do not use it if you need storage persistence.
 ##Installation
 
 ````bash
-curl -sL https://github.com/robinmonjo/sc-redis/releases/download/v1.1.1/sc-redis-v1.1.1_x86_64.tgz | tar -C /usr/local/bin -zxf -
+curl -sL https://github.com/robinmonjo/sc-redis/releases/download/v1.1.2/sc-redis-v1.1.2_x86_64.tgz | tar -C /usr/local/bin -zxf -
 ````
 
 To uninstall:
@@ -51,7 +51,7 @@ To uninstall:
 
 ####flags
 
-- `-i 10.0.5.<xxx>`
+- `-i 172.18.<xxx>.<xxx>`
 
 If this flag is used, the container uses the net namespace and is accessible through the *scredis0* bridge automatically created on the host.
 You can then connect to it this way: `redis-cli -h 172.18.<xxx>.<xxx> -p 6379`.
