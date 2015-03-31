@@ -1,7 +1,7 @@
 GOPATH:=`pwd`/vendor:$(GOPATH)
 GOPATH:=$(GOPATH):`pwd`/vendor/src/github.com/docker/libcontainer/vendor:`pwd`/vendor/src/github.com/docker/docker/vendor
 GO:=$(shell which go)
-VERSION:=1.1.1
+VERSION:=1.1.2
 HARDWARE=$(shell uname -m)
 DOCKER_IMAGE=robinmonjo/scredis
 

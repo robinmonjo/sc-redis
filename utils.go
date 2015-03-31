@@ -47,13 +47,13 @@ func setupNetBridge() error {
 }
 
 func validateIPAddr(ip string) error {
-	formatErr := fmt.Errorf("invalid ip address %s. Expecting 10.0.5.XXX", ip)
+	formatErr := fmt.Errorf("invalid ip address %s. Expecting 172.18.XXX.XXX", ip)
 
 	comps := strings.Split(ip, ".")
 	if len(comps) != 4 {
 		return formatErr
 	}
-	if comps[0] != "10" || comps[1] != "0" || comps[2] != "5" {
+	if comps[0] != "172" || comps[1] != "18" {
 		return formatErr
 	}
 	ipID, err := strconv.Atoi(comps[3])

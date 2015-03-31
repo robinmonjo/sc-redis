@@ -23,8 +23,8 @@ const (
 
 	//bridge
 	vethBridge  = "scredis0"
-	vethNetwork = "10.0.5.1/24"
-	vethGateway = "10.0.5.1"
+	vethNetwork = "172.18.1.1/16"
+	vethGateway = "172.18.1.1"
 )
 
 func init() {
@@ -40,7 +40,7 @@ func main() {
 	app.Usage = "self contained redis-server"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{Name: "config, c", Usage: "redis configuration, e.g: \"requirepass foobar, port 9999, ...\""},
-		cli.StringFlag{Name: "ip, i", Usage: "use the net namespace with the given ip address, format: 10.0.5.xxx"},
+		cli.StringFlag{Name: "ip, i", Usage: "use the net namespace with the given ip address, format: 172.18.xxx.xxx"},
 		cli.StringFlag{Name: "working_dir, w", Value: ".", Usage: "working directory where container are created"},
 	}
 	app.Commands = []cli.Command{
